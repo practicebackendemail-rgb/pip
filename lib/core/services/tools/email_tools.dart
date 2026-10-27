@@ -81,14 +81,14 @@ class DraftEmailTool extends PipTool {
   }
 }
 
-/// Send an outgoing email.
+/// Send an outgoing email via SMTP.
 class SendEmailTool extends PipTool {
   final EmailService emailService;
 
   const SendEmailTool({required this.emailService})
       : super(
           name: 'send_email',
-          description: 'Transmit an email to a recipient. Irreversible external operation.',
+          description: 'Transmit an email to a recipient via SMTP. Irreversible external operation.',
           confirmationLevel: ToolConfirmationLevel.level3DangerousDoubleConfirm,
           parameters: const [
             ToolParameterSpec(
@@ -116,16 +116,20 @@ class SendEmailTool extends PipTool {
   Future<Map<String, dynamic>> execute(Map<String, dynamic> args) async {
     final to = (args['recipient'] as String?)?.trim() ?? '';
     final sub = (args['subject'] as String?)?.trim() ?? '';
+    final body = (args['body'] as String?)?.trim() ?? '';
 
     if (!emailService.isConfigured) {
       return {'error': 'Mail service is not configured. Setup credentials first.'};
     }
 
-    return {
-      'status': 'dispatched',
-      'recipient': to,
-      'subject': sub,
-      'timestamp': DateTime.now().toIso8601String(),
-    };
+    if (to.isEmpty) {
+      return {'error': 'Recipient email cannot be empty.'};
+    }
+
+    return await emailService.sendEmail(
+      to: to,
+      subject: sub,
+      body: body,
+    );
   }
 }

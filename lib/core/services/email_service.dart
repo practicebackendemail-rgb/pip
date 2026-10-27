@@ -2,12 +2,15 @@ import 'package:enough_mail/enough_mail.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'email_provider_preset.dart';
 
-/// Configuration for IMAP email access.
+/// Configuration for IMAP and SMTP email access.
 /// Note: The password is NEVER serialized in toJson() to prevent credential leakage.
 class EmailConfig {
   final String imapServer;
   final int imapPort;
+  final String smtpServer;
+  final int smtpPort;
   final bool isSecure;
   final String username;
   final String password;
@@ -15,25 +18,30 @@ class EmailConfig {
   const EmailConfig({
     required this.imapServer,
     this.imapPort = 993,
+    required this.smtpServer,
+    this.smtpPort = 465,
     this.isSecure = true,
     required this.username,
     required this.password,
   });
 
-  /// Serializes non-sensitive fields only.
   Map<String, dynamic> toJson() => {
         'imapServer': imapServer,
         'imapPort': imapPort,
+        'smtpServer': smtpServer,
+        'smtpPort': smtpPort,
         'isSecure': isSecure,
         'username': username,
       };
 
   factory EmailConfig.fromJson(Map<String, dynamic> json, {String password = ''}) =>
       EmailConfig(
-        imapServer: json['imapServer'] as String,
+        imapServer: json['imapServer'] as String? ?? 'imap.gmail.com',
         imapPort: json['imapPort'] as int? ?? 993,
+        smtpServer: json['smtpServer'] as String? ?? 'smtp.gmail.com',
+        smtpPort: json['smtpPort'] as int? ?? 465,
         isSecure: json['isSecure'] as bool? ?? true,
-        username: json['username'] as String,
+        username: json['username'] as String? ?? '',
         password: password,
       );
 }
@@ -58,11 +66,9 @@ class EmailService extends ChangeNotifier {
     _loadConfig();
   }
 
-  /// Loads configuration and executes a one-time migration if plain-text password exists in SharedPreferences.
   Future<void> _loadConfig() async {
     final prefs = await SharedPreferences.getInstance();
 
-    // One-time migration: check if unencrypted SharedPreferences has mail_pass
     if (prefs.containsKey('mail_pass')) {
       final legacyPass = prefs.getString('mail_pass');
       if (legacyPass != null && legacyPass.isNotEmpty) {
@@ -73,13 +79,19 @@ class EmailService extends ChangeNotifier {
 
     final server = prefs.getString('mail_server');
     final port = prefs.getInt('mail_port') ?? 993;
+    final smtpHost = prefs.getString('mail_smtp_server');
+    final smtpP = prefs.getInt('mail_smtp_port');
     final user = prefs.getString('mail_user');
     final pass = await _secureStorage.read(key: _securePasswordKey);
 
     if (server != null && user != null && pass != null && pass.isNotEmpty) {
+      final preset = EmailProviderPreset.findForEmail(user);
       _config = EmailConfig(
         imapServer: server,
         imapPort: port,
+        smtpServer: smtpHost ?? preset?.smtpServer ?? server.replaceFirst('imap.', 'smtp.'),
+        smtpPort: smtpP ?? preset?.smtpPort ?? 465,
+        isSecure: preset?.isSecure ?? true,
         username: user,
         password: pass,
       );
@@ -87,12 +99,13 @@ class EmailService extends ChangeNotifier {
     }
   }
 
-  /// Connects, validates IMAP credentials, and persists securely on success.
   Future<bool> saveAndTestConfig({
     required String server,
     required int port,
     required String user,
     required String pass,
+    String? smtpServer,
+    int? smtpPort,
     bool isSecure = true,
   }) async {
     _isConnecting = true;
@@ -100,12 +113,16 @@ class EmailService extends ChangeNotifier {
     notifyListeners();
 
     try {
+      final preset = EmailProviderPreset.findForEmail(user);
+      final derivedSmtpServer = smtpServer ?? preset?.smtpServer ?? server.replaceFirst('imap.', 'smtp.');
+      final derivedSmtpPort = smtpPort ?? preset?.smtpPort ?? 465;
+      final derivedIsSecure = preset?.isSecure ?? isSecure;
+
       final client = ImapClient(isLogEnabled: false);
-      await client.connectToServer(server, port, isSecure: isSecure);
+      await client.connectToServer(server, port, isSecure: derivedIsSecure);
       await client.login(user, pass);
       await client.selectInbox();
 
-      // Fetch top 5 unread/recent message headers
       final fetchResult = await client.fetchRecentMessages(
         messageCount: 5,
         criteria: 'BODY.PEEK[HEADER.FIELDS (SUBJECT FROM DATE)]',
@@ -118,23 +135,22 @@ class EmailService extends ChangeNotifier {
 
       await client.logout();
 
-      // Persist configuration: non-sensitive metadata in SharedPreferences
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('mail_server', server);
       await prefs.setInt('mail_port', port);
+      await prefs.setString('mail_smtp_server', derivedSmtpServer);
+      await prefs.setInt('mail_smtp_port', derivedSmtpPort);
       await prefs.setString('mail_user', user);
 
-      // Persist sensitive credential strictly in hardware-backed FlutterSecureStorage
       await _secureStorage.write(key: _securePasswordKey, value: pass);
-
-      // Clean up legacy key if lingering
-      if (prefs.containsKey('mail_pass')) {
-        await prefs.remove('mail_pass');
-      }
+      if (prefs.containsKey('mail_pass')) await prefs.remove('mail_pass');
 
       _config = EmailConfig(
         imapServer: server,
         imapPort: port,
+        smtpServer: derivedSmtpServer,
+        smtpPort: derivedSmtpPort,
+        isSecure: derivedIsSecure,
         username: user,
         password: pass,
       );
@@ -150,11 +166,72 @@ class EmailService extends ChangeNotifier {
     }
   }
 
-  /// Clears credentials completely from both secure storage and SharedPreferences.
+  /// Transmits real RFC 822 email message using SMTP client
+  Future<Map<String, dynamic>> sendEmail({
+    required String to,
+    required String subject,
+    required String body,
+  }) async {
+    if (!isConfigured || _config == null) {
+      return {'error': 'Mail service is not configured. Setup credentials first.'};
+    }
+
+    final toAddress = to.trim();
+    if (!RegExp(r'^[^@]+@[^@]+\.[^@]+$').hasMatch(toAddress)) {
+      return {'error': 'Invalid recipient email address format: $toAddress'};
+    }
+
+    final client = SmtpClient('pip.desktop.client', isLogEnabled: false);
+    try {
+      await client.connectToServer(
+        _config!.smtpServer,
+        _config!.smtpPort,
+        isSecure: _config!.isSecure,
+      );
+      await client.ehlo();
+
+      if (!_config!.isSecure && client.serverInfo.supportsStartTls) {
+        await client.startTls();
+        await client.ehlo();
+      }
+
+      final authMechanism = client.serverInfo.supportsAuth(AuthMechanism.plain)
+          ? AuthMechanism.plain
+          : AuthMechanism.login;
+      await client.authenticate(_config!.username, _config!.password, authMechanism);
+
+      final builder = MessageBuilder()
+        ..from = [MailAddress(null, _config!.username)]
+        ..to = [MailAddress(null, toAddress)]
+        ..subject = subject
+        ..text = body;
+
+      final message = builder.buildMimeMessage();
+      final response = await client.sendMessage(message);
+
+      await client.quit();
+
+      if (response.isOkStatus) {
+        return {
+          'status': 'sent',
+          'recipient': toAddress,
+          'subject': subject,
+          'timestamp': DateTime.now().toIso8601String(),
+        };
+      } else {
+        return {'error': 'SMTP rejected message: ${response.errorMessage}'};
+      }
+    } catch (e) {
+      return {'error': 'SMTP delivery failed: $e'};
+    }
+  }
+
   Future<void> clearCredentials() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('mail_server');
     await prefs.remove('mail_port');
+    await prefs.remove('mail_smtp_server');
+    await prefs.remove('mail_smtp_port');
     await prefs.remove('mail_user');
     await prefs.remove('mail_pass');
     await _secureStorage.delete(key: _securePasswordKey);
@@ -164,7 +241,6 @@ class EmailService extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Fetches unread message headers.
   Future<List<String>> fetchUnreadSummaries() async {
     if (_config == null) return [];
     try {
