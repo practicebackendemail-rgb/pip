@@ -1,21 +1,21 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import '../domain/encrypted_memory_db.dart';
 import '../domain/event_log.dart';
 import '../domain/llm_provider.dart';
-import '../domain/memory_models.dart';
 import '../domain/memory_repository.dart';
 import 'llm_registry_service.dart';
 
-/// Nightly Reflection Service (Section 8.2 & Step 2 of Fix Plan)
-/// Synthesizes event logs into profile facts, memories, and rules.
-/// Includes 20-hour elapsed guard, chronological event slicing,
-/// fault-tolerant output validation, confidence reinforcement, and confidence decay.
+/// Nightly Reflection Service (Section 8.2 & Phase 3)
+/// Synthesizes unprocessed event logs into profile facts, memories, and rules.
+/// Includes 20-hour elapsed guard, atomic batch marking of processed events,
+/// stale-free profile facts querying, lastReinforcedAt decay, and rule deduplication.
 class NightlyReflectionService extends ChangeNotifier {
-  static const String _prefLastReflection = 'pip_last_reflection_at';
+  static const String _metaLastReflection = 'pip_last_reflection_at';
   final MemoryRepository memoryRepository;
   final EventLogService eventLog;
   final LlmRegistryService llmRegistry;
+  final EncryptedMemoryDatabase _db = EncryptedMemoryDatabase.instance;
 
   bool _isReflecting = false;
   DateTime? _lastReflectionAt;
@@ -33,14 +33,13 @@ class NightlyReflectionService extends ChangeNotifier {
 
   Future<void> _loadLastReflectionTime() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final stored = prefs.getString(_prefLastReflection);
+      final stored = await _db.getMeta(_metaLastReflection);
       if (stored != null) {
         _lastReflectionAt = DateTime.tryParse(stored);
         notifyListeners();
       }
     } catch (e) {
-      debugPrint('NightlyReflectionService load error: $e');
+      debugPrint('NightlyReflectionService meta load error: $e');
     }
   }
 
@@ -57,22 +56,8 @@ class NightlyReflectionService extends ChangeNotifier {
       }
     }
 
-    final events = eventLog.events;
-    if (events.isEmpty) return;
-
-    // Filter events since last reflection (or all if first run), newest-last, capped at 200
-    List<PipEvent> candidates;
-    if (_lastReflectionAt != null) {
-      candidates = events.where((e) => e.timestamp.isAfter(_lastReflectionAt!)).toList();
-    } else {
-      candidates = List<PipEvent>.from(events);
-    }
-
+    final candidates = await _db.getUnprocessedEvents(limit: 200);
     if (candidates.isEmpty) return;
-    candidates.sort((a, b) => a.timestamp.compareTo(b.timestamp));
-    if (candidates.length > 200) {
-      candidates = candidates.sublist(candidates.length - 200);
-    }
 
     _isReflecting = true;
     notifyListeners();
@@ -133,16 +118,15 @@ Output pure JSON matching this exact structure:
       }
 
       if (decoded != null) {
-        await _applyReflectionResults(decoded, facts);
+        await _applyReflectionResults(decoded);
+        await _db.markEventsProcessed(candidates.map((e) => e.id).toList());
 
-        // Record successful reflection timestamp
         _lastReflectionAt = now;
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setString(_prefLastReflection, now.toIso8601String());
+        await _db.setMeta(_metaLastReflection, now.toIso8601String());
       }
 
-      // Step 2.8: Decay facts not reinforced within 30 days
-      await _applyFactDecay(facts, now);
+      // Re-query fresh facts to avoid decay race overwriting newly inserted items
+      await _applyFactDecay(now);
     } catch (e) {
       debugPrint('Reflection error: $e');
     } finally {
@@ -164,10 +148,11 @@ Output pure JSON matching this exact structure:
     return null;
   }
 
-  Future<void> _applyReflectionResults(Map<String, dynamic> decoded, List<ProfileFact> existingFacts) async {
+  Future<void> _applyReflectionResults(Map<String, dynamic> decoded) async {
     // 1. Ingest Facts with confidence boosting
     final newFacts = decoded['new_facts'];
     if (newFacts is List) {
+      final freshFacts = await memoryRepository.getProfile();
       for (final f in newFacts) {
         if (f is! Map) continue;
         final k = f['key'] as String?;
@@ -176,9 +161,8 @@ Output pure JSON matching this exact structure:
         c = c.clamp(0.1, 1.0);
 
         if (k != null && v != null) {
-          final existing = existingFacts.where((item) => item.key == k).toList();
+          final existing = freshFacts.where((item) => item.key == k).toList();
           if (existing.isNotEmpty) {
-            // Reinforcement: boost confidence up to 0.95
             c = (existing.first.confidence + 0.1).clamp(0.1, 0.95);
           }
           await memoryRepository.upsertFact(k, v, confidence: c);
@@ -186,7 +170,7 @@ Output pure JSON matching this exact structure:
       }
     }
 
-    // 2. Ingest Rules
+    // 2. Ingest Rules (deduplicated by instruction string in repository)
     final newRules = decoded['new_rules'];
     if (newRules is List) {
       for (final r in newRules) {
@@ -224,16 +208,17 @@ Output pure JSON matching this exact structure:
     }
   }
 
-  /// Lowers confidence for facts inactive for 30+ days; prunes facts below 0.2.
-  Future<void> _applyFactDecay(List<ProfileFact> currentFacts, DateTime now) async {
-    for (final fact in currentFacts) {
-      final daysSinceUpdate = now.difference(fact.updatedAt).inDays;
-      if (daysSinceUpdate >= 30) {
+  /// Lowers confidence for facts not reinforced within 30 days using lastReinforcedAt
+  Future<void> _applyFactDecay(DateTime now) async {
+    final freshFacts = await memoryRepository.getProfile();
+    for (final fact in freshFacts) {
+      final daysSinceReinforcement = now.difference(fact.lastReinforcedAt).inDays;
+      if (daysSinceReinforcement >= 30) {
         final decayed = fact.confidence - 0.1;
         if (decayed < 0.2) {
           await memoryRepository.deleteFact(fact.key);
         } else {
-          await memoryRepository.upsertFact(fact.key, fact.value, confidence: decayed);
+          await memoryRepository.setFactConfidence(fact.key, decayed);
         }
       }
     }

@@ -23,7 +23,8 @@ import '../services/tools/weather_tool.dart';
 @module
 abstract class CoreModule {
   @lazySingleton
-  TaskProvider get taskProvider => TaskProvider();
+  TaskProvider taskProvider(EventLogService eventLogService, PipEmotionState pipEmotionState) =>
+      TaskProvider(eventLog: eventLogService, emotionState: pipEmotionState);
 
   @lazySingleton
   GeminiAssistantService get geminiAssistantService => GeminiAssistantService();

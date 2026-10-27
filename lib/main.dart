@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'core/di/injection.dart';
+import 'core/domain/pip_emotion_state.dart';
 import 'core/services/nightly_reflection_service.dart';
 import 'core/services/pip_desktop_window_manager.dart';
 import 'core/theme/apple_theme.dart';
@@ -67,7 +68,8 @@ class _PersonalAssistantAppState extends State<PersonalAssistantApp>
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
-      // Step 2: Trigger reflection check when app returns to foreground
+      // Step 2 & Phase 3: Trigger reflection check and update emotion drift on app resume
+      getIt<PipEmotionState>().evaluateTimeDrift();
       getIt<NightlyReflectionService>().runReflectionIfNeeded();
     }
   }

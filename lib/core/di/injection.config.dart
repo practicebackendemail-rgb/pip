@@ -37,7 +37,6 @@ extension GetItInjectableX on _i174.GetIt {
   }) {
     final gh = _i526.GetItHelper(this, environment, environmentFilter);
     final coreModule = _$CoreModule();
-    gh.lazySingleton<_i171.TaskProvider>(() => coreModule.taskProvider);
     gh.lazySingleton<_i846.GeminiAssistantService>(
       () => coreModule.geminiAssistantService,
     );
@@ -52,21 +51,27 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i404.LlmRegistryService>(
       () => coreModule.llmRegistryService,
     );
-    gh.lazySingleton<_i239.PipToolRegistry>(
-      () => coreModule.pipToolRegistry(
-        gh<_i171.TaskProvider>(),
-        gh<_i621.MemoryRepository>(),
-        gh<_i233.EmailService>(),
-      ),
-    );
     gh.lazySingleton<_i463.PipCloudSyncCoordinator>(
       () => coreModule.pipCloudSyncCoordinator(gh<_i621.MemoryRepository>()),
+    );
+    gh.lazySingleton<_i171.TaskProvider>(
+      () => coreModule.taskProvider(
+        gh<_i573.EventLogService>(),
+        gh<_i42.PipEmotionState>(),
+      ),
     );
     gh.lazySingleton<_i336.NightlyReflectionService>(
       () => coreModule.nightlyReflectionService(
         gh<_i621.MemoryRepository>(),
         gh<_i573.EventLogService>(),
         gh<_i404.LlmRegistryService>(),
+      ),
+    );
+    gh.lazySingleton<_i239.PipToolRegistry>(
+      () => coreModule.pipToolRegistry(
+        gh<_i171.TaskProvider>(),
+        gh<_i621.MemoryRepository>(),
+        gh<_i233.EmailService>(),
       ),
     );
     gh.factory<_i528.PipStageCubit>(

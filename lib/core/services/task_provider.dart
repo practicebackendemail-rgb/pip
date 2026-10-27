@@ -3,8 +3,12 @@ import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 import '../../models/task_model.dart';
+import '../domain/event_log.dart';
+import '../domain/pip_emotion_state.dart';
 
 class TaskProvider extends ChangeNotifier {
+  final EventLogService? eventLog;
+  final PipEmotionState? emotionState;
   List<TaskItem> _tasks = [];
   String _selectedProject = 'All';
   int _completedTodayCount = 0;
@@ -29,7 +33,7 @@ class TaskProvider extends ChangeNotifier {
     return set.toList();
   }
 
-  TaskProvider() {
+  TaskProvider({this.eventLog, this.emotionState}) {
     _loadTasks();
   }
 
@@ -117,10 +121,13 @@ class TaskProvider extends ChangeNotifier {
       _tasks[index] = task.copyWith(isCompleted: newCompleted);
       if (newCompleted) {
         _completedTodayCount++;
+        eventLog?.log('task_completed', {'taskId': task.id, 'title': task.title});
+        emotionState?.onTaskCompleted();
       } else if (_completedTodayCount > 0) {
         _completedTodayCount--;
       }
       _saveTasks();
+      _checkOverdueTasks();
       notifyListeners();
     }
   }
@@ -152,12 +159,24 @@ class TaskProvider extends ChangeNotifier {
       if (!_tasks[i].isCompleted) {
         _tasks[i] = _tasks[i].copyWith(isCompleted: true);
         _completedTodayCount++;
+        eventLog?.log('task_completed', {'taskId': _tasks[i].id, 'title': _tasks[i].title});
         changed = true;
       }
     }
     if (changed) {
+      emotionState?.onTaskCompleted();
       _saveTasks();
+      _checkOverdueTasks();
       notifyListeners();
+    }
+  }
+
+  void _checkOverdueTasks() {
+    final now = DateTime.now();
+    final overdueCount = _tasks.where((t) => !t.isCompleted && t.dueDate != null && t.dueDate!.isBefore(now)).length;
+    if (overdueCount >= 3) {
+      eventLog?.log('tasks_overdue_accumulated', {'count': overdueCount});
+      emotionState?.onOverdueAccumulation();
     }
   }
 
