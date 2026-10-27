@@ -16,10 +16,12 @@ import 'core/services/pip_audio_coordinator.dart';
 import 'core/services/pip_overlay_bridge.dart';
 import 'core/services/pip_sfx_service.dart';
 import 'core/services/pip_desktop_window_manager.dart';
+import 'core/services/pip_notification_service.dart';
 import 'core/services/sync/pip_cloud_sync_coordinator.dart';
 import 'core/services/task_provider.dart';
 import 'core/theme/pip_theme.dart';
 import 'features/companion/presentation/cubit/pip_stage_cubit.dart';
+import 'features/reminders/presentation/screens/alarms_reminders_screen.dart';
 import 'widgets/companion/pip_overlay_widget.dart';
 
 // Overlay entry point required by flutter_overlay_window
@@ -40,9 +42,13 @@ void main() async {
   await PipDesktopWindowManager.initialize();
   await PipSfxService.loadSetting();
   PipSfxService.preload();
+  await PipNotificationService.init();
 
   runApp(const PersonalAssistantApp());
 }
+
+/// Lets notification taps open a screen from outside the widget tree.
+final GlobalKey<NavigatorState> pipNavigatorKey = GlobalKey<NavigatorState>();
 
 class PersonalAssistantApp extends StatefulWidget {
   const PersonalAssistantApp({super.key});
@@ -60,6 +66,7 @@ class _PersonalAssistantAppState extends State<PersonalAssistantApp>
   late final EmbeddingBackfillService _backfill;
   String? _embeddingProviderId;
   Timer? _driftTimer;
+  StreamSubscription<int>? _notificationTaps;
 
   @override
   void initState() {
@@ -83,8 +90,11 @@ class _PersonalAssistantAppState extends State<PersonalAssistantApp>
       (_) => getIt<PipEmotionState>().evaluateTimeDrift(),
     );
     _logSession('session_started');
+    _notificationTaps = PipNotificationService.openedItems.listen((_) => _openAlarms());
     // Reflection, then embedding backfill, once the first frame is up
     WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (PipNotificationService.launchedFromItem != null) _openAlarms();
+      await PipNotificationService.rescheduleAll();
       await getIt<NightlyReflectionService>().runReflectionIfNeeded();
       if (EncryptedMemoryDatabase.instance.quarantinedPath != null) {
         _stageCubit.speak(
@@ -104,6 +114,11 @@ class _PersonalAssistantAppState extends State<PersonalAssistantApp>
     _embeddingProviderId = id;
   }
 
+  void _openAlarms() {
+    PipNotificationService.launchedFromItem = null;
+    pipNavigatorKey.currentState?.push(AlarmsRemindersScreen.route());
+  }
+
   void _logSession(String type) {
     final now = DateTime.now();
     getIt<EventLogService>().log(type, {'hour': now.hour, 'weekday': now.weekday});
@@ -114,6 +129,7 @@ class _PersonalAssistantAppState extends State<PersonalAssistantApp>
     WidgetsBinding.instance.removeObserver(this);
     getIt<LlmRegistryService>().removeListener(_onRegistryChanged);
     _driftTimer?.cancel();
+    _notificationTaps?.cancel();
     _overlayBridge?.dispose();
     _stageCubit.close();
     super.dispose();
@@ -139,6 +155,7 @@ class _PersonalAssistantAppState extends State<PersonalAssistantApp>
       value: _stageCubit,
       child: MaterialApp(
         title: 'Pip',
+        navigatorKey: pipNavigatorKey,
         debugShowCheckedModeBanner: false,
         theme: PipTheme.dark,
         home: const PipAppFlow(),

@@ -9,7 +9,7 @@ class PipSilentReaction extends Equatable {
   final String reaction; // nod_sympathetically, tilt_head_curiously, celebrate_small_win, cheer_up, alert
   final String screenExpression; // caring_eyes, excited_eyes, thinking_look, calm_gaze, sleepy_droop
   final Color ledColor;
-  final String sfxCue; // chirp, happy, blip, thinking, sleep, none
+  final String sfxCue; // chirp, happy, blip, thinking, sleep, laugh, sad, excited, unsure, none
   final String thoughtBubble; // Optional silent subtitle or thought bubble text
 
   const PipSilentReaction({

@@ -14,6 +14,7 @@ import '../../../../core/services/pip_profile_service.dart';
 import '../../../../core/services/pip_sfx_service.dart';
 import '../../../../core/services/pip_tool_registry.dart';
 import '../../../../core/services/task_provider.dart';
+import '../../../../core/services/voice_service.dart';
 import '../../../../widgets/companion/pip_expression_matcher.dart';
 import '../../../../widgets/companion/pip_overlay_and_dock_area.dart';
 import '../../../../widgets/companion/pip_speech_coordinator.dart';
@@ -26,6 +27,7 @@ import 'pip_chat_engine.dart';
 import 'pip_memory_helper.dart';
 import 'pip_stage_state.dart';
 import 'pip_tool_coordinator.dart';
+import 'pip_voice_output.dart';
 
 @injectable
 class PipStageCubit extends Cubit<PipStageState> {
@@ -37,6 +39,7 @@ class PipStageCubit extends Cubit<PipStageState> {
   final EmailService emailService;
   final PipToolRegistry toolRegistry;
   final PipSpeechCoordinator _speech = PipSpeechCoordinator();
+  final PipVoiceOutput _voice;
   late final PipToolCoordinator _toolCoordinator;
   late final PipMemoryHelper _memoryHelper;
   late final PipChatEngine _chatEngine;
@@ -49,30 +52,30 @@ class PipStageCubit extends Cubit<PipStageState> {
     required this.taskProvider,
     required this.emailService,
     required this.toolRegistry,
-  }) : super(const PipStageState()) {
+    VoiceService? voiceService,
+  })  : _voice = PipVoiceOutput(voiceService),
+        super(const PipStageState()) {
     _toolCoordinator = PipToolCoordinator(toolRegistry: toolRegistry, eventLog: eventLog);
     _memoryHelper = PipMemoryHelper(memoryRepository);
     _chatEngine = PipChatEngine(toolCoordinator: _toolCoordinator);
+    _voice.enabled.then((on) => isClosed ? null : emit(state.copyWith(isSilentCompanionMode: !on)));
     _initGreeting();
     _syncHomeWidget();
   }
 
-  void _syncHomeWidget() {
-    final pending = taskProvider.allTasks.where((t) => !t.isCompleted).length;
-    PipHomeWidgetService.updateWidget(
+  void _syncHomeWidget() => PipHomeWidgetService.updateWidget(
       mood: state.currentMood.name,
       statusText: state.statusText,
-      pendingTasksCount: pending,
-    );
-  }
+      pendingTasksCount: taskProvider.allTasks.where((t) => !t.isCompleted).length);
 
   void _initGreeting() => speak("Hi there! I'm Pip, your desk companion. What are we building or tackling today?", isHappy: true);
 
-  void speak(String text, {bool isHappy = false}) {
+  void speak(String text, {bool isHappy = false, PipSound? sound}) {
     emit(state.copyWith(speechText: "", isTypewriting: true, currentMood: PipMood.talking));
     _speech.triggerSpeech(
       fullText: text,
       isHappy: isHappy,
+      sound: sound,
       onTick: () => emit(state.copyWith(speechText: _speech.displayedSpeechText, isTypewriting: true)),
       onDone: () => emit(state.copyWith(
         speechText: _speech.displayedSpeechText,
@@ -80,6 +83,7 @@ class PipStageCubit extends Cubit<PipStageState> {
         currentMood: state.isSleeping ? PipMood.sleeping : PipMood.idle,
       )),
     );
+    _voice.say(text);
   }
 
   void wakeUp() {
@@ -111,9 +115,7 @@ class PipStageCubit extends Cubit<PipStageState> {
   void rateReply({required bool positive}) {
     final text = state.speechText;
     if (text.isEmpty) return;
-    eventLog.log(positive ? 'reply_thumbs_up' : 'reply_thumbs_down', {
-      'reply': text.length > 160 ? text.substring(0, 160) : text,
-    });
+    eventLog.log(positive ? 'reply_thumbs_up' : 'reply_thumbs_down', {'reply': text.length > 160 ? text.substring(0, 160) : text});
     emit(state.copyWith(statusText: positive ? "Thanks for the feedback!" : "Noted, I'll adjust."));
   }
   void clearSpeechBubble() {
@@ -213,27 +215,23 @@ class PipStageCubit extends Cubit<PipStageState> {
     final resolvedMood = parsed.toPipMood();
     await _memoryHelper.saveLearnedMemories(parsed.memoryCandidates, embeddingProvider);
 
-    if (parsed.emotion == 'happy' || parsed.emotion == 'proud' || parsed.emotion == 'excited') {
-      PipSfxService.happy();
-    }
+    final sound = PipSfxService.forEmotion(parsed.emotion);
+    final silent = state.isSilentCompanionMode;
+    if (silent) PipSfxService.play(sound);
+    emit(state.copyWith(
+      isLoading: false,
+      statusText: "Pip ${silent ? 'reacted' : 'replied'} (${parsed.emotion})",
+      currentMood: resolvedMood,
+      speechText: cleanText,
+      isTypewriting: silent ? false : null,
+    ));
+    if (!silent) speak(cleanText, isHappy: parsed.emotion == 'happy' || parsed.emotion == 'excited', sound: sound);
+  }
 
-    if (state.isSilentCompanionMode) {
-      emit(state.copyWith(
-        isLoading: false,
-        statusText: "Pip reacted (${parsed.emotion})",
-        currentMood: resolvedMood,
-        speechText: cleanText,
-        isTypewriting: false,
-      ));
-    } else {
-      emit(state.copyWith(
-        isLoading: false,
-        statusText: "Pip replied (${parsed.emotion})",
-        currentMood: resolvedMood,
-        speechText: cleanText,
-      ));
-      speak(cleanText, isHappy: parsed.emotion == 'happy' || parsed.emotion == 'excited');
-    }
+  /// Turns Pip's spoken voice on or off; remembered across launches.
+  Future<void> setVoiceEnabled(bool on) async {
+    await _voice.setEnabled(on);
+    emit(state.copyWith(isSilentCompanionMode: !on));
   }
 
   Future<void> confirmPendingAction() async {
@@ -296,6 +294,7 @@ class PipStageCubit extends Cubit<PipStageState> {
   @override
   Future<void> close() {
     _speech.dispose();
+    _voice.stop();
     return super.close();
   }
 }

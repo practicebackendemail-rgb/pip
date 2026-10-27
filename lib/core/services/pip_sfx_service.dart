@@ -2,7 +2,7 @@ import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-enum PipSound { chirp, happy, thinking, blip, sleep }
+enum PipSound { chirp, happy, thinking, blip, sleep, laugh, sad, excited, unsure, listen }
 
 /// Pip's little robot sounds.
 ///
@@ -25,7 +25,24 @@ class PipSfxService {
     PipSound.thinking: 'audio/pip_thinking.wav',
     PipSound.blip: 'audio/pip_blip.wav',
     PipSound.sleep: 'audio/pip_sleep.wav',
+    PipSound.laugh: 'audio/pip_laugh.wav',
+    PipSound.sad: 'audio/pip_sad.wav',
+    PipSound.excited: 'audio/pip_excited.wav',
+    PipSound.unsure: 'audio/pip_unsure.wav',
+    PipSound.listen: 'audio/pip_listen.wav',
   };
+
+  /// The sound for a reply emotion from the reply contract. Calm and
+  /// unknown emotions get the plain chirp.
+  static PipSound forEmotion(String emotion) => switch (emotion) {
+        'happy' || 'proud' => PipSound.happy,
+        'excited' || 'mischievous' => PipSound.excited,
+        'laughing' => PipSound.laugh,
+        'sad' || 'sulky' => PipSound.sad,
+        'unsure' => PipSound.unsure,
+        'sleepy' => PipSound.sleep,
+        _ => PipSound.chirp,
+      };
 
   static final Map<PipSound, AudioPlayer> _players = {};
   static Future<void>? _loading;
@@ -95,6 +112,11 @@ class PipSfxService {
   static Future<void> thinking() => play(PipSound.thinking);
   static Future<void> blip() => play(PipSound.blip);
   static Future<void> sleep() => play(PipSound.sleep);
+  static Future<void> laugh() => play(PipSound.laugh);
+  static Future<void> sad() => play(PipSound.sad);
+  static Future<void> excited() => play(PipSound.excited);
+  static Future<void> unsure() => play(PipSound.unsure);
+  static Future<void> listen() => play(PipSound.listen);
 
   static const String _enabledKey = 'pip_sfx_enabled';
 

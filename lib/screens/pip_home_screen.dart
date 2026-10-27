@@ -6,6 +6,7 @@ import '../core/domain/memory_repository.dart';
 import '../core/services/pip_audio_coordinator.dart';
 import '../core/theme/pip_theme.dart';
 import '../features/companion/presentation/cubit/pip_stage_cubit.dart';
+import '../features/reminders/presentation/screens/alarms_reminders_screen.dart';
 import '../widgets/companion/pip_overlay_and_dock_area.dart';
 import '../widgets/home/pip_today_panel.dart';
 import 'companion_stage_screen.dart';
@@ -58,8 +59,10 @@ class _WideHome extends StatelessWidget {
       case 1:
         cubit.setOverlay(CompanionOverlay.tasks);
       case 2:
-        WhatPipKnowsScreen.show(context, getIt<MemoryRepository>());
+        AlarmsRemindersScreen.open(context);
       case 3:
+        WhatPipKnowsScreen.show(context, getIt<MemoryRepository>());
+      case 4:
         PipSettingsScreen.open(context);
       default:
         cubit.dismissOverlay();
@@ -83,6 +86,7 @@ class _WideHome extends StatelessWidget {
             destinations: const [
               NavigationRailDestination(icon: Icon(Icons.smart_toy_outlined), label: Text('Pip')),
               NavigationRailDestination(icon: Icon(Icons.checklist), label: Text('Tasks')),
+              NavigationRailDestination(icon: Icon(Icons.alarm), label: Text('Alarms')),
               NavigationRailDestination(icon: Icon(Icons.psychology_outlined), label: Text('Memory')),
               NavigationRailDestination(icon: Icon(Icons.settings_outlined), label: Text('Settings')),
             ],

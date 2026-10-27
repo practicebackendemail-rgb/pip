@@ -113,8 +113,11 @@ class PipStructuredReply {
       case 'excited':
       case 'mischievous':
         return PipMood.excited;
+      case 'laughing':
+        return PipMood.laughing;
       case 'sleepy':
         return PipMood.sleepy;
+      case 'sad':
       case 'sulky':
         return PipMood.sad;
       case 'unsure':
@@ -132,7 +135,7 @@ class PipStructuredReply {
           'text': {'type': 'string', 'description': 'What Pip says to the user'},
           'emotion': {
             'type': 'string',
-            'enum': ['happy', 'excited', 'sleepy', 'unsure', 'proud', 'sulky', 'mischievous', 'calm'],
+            'enum': ['happy', 'excited', 'laughing', 'sleepy', 'unsure', 'proud', 'sad', 'sulky', 'mischievous', 'calm'],
             'description': 'Pip internal emotion for this turn'
           },
           'intensity': {'type': 'number', 'description': 'Emotional intensity 0.0 to 1.0'},

@@ -83,6 +83,7 @@ extension GetItInjectableX on _i174.GetIt {
         taskProvider: gh<_i171.TaskProvider>(),
         emailService: gh<_i233.EmailService>(),
         toolRegistry: gh<_i239.PipToolRegistry>(),
+        voiceService: gh<_i950.VoiceService>(),
       ),
     );
     return this;

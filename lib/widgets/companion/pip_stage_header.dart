@@ -12,6 +12,7 @@ import '../../core/services/pip_sfx_service.dart';
 import '../../core/theme/apple_theme.dart';
 import '../../core/theme/app_motion_tokens.dart';
 import '../../core/theme/pip_theme.dart';
+import '../../features/reminders/presentation/screens/alarms_reminders_screen.dart';
 import '../../screens/settings/pip_settings_screen.dart';
 import '../../screens/what_pip_knows_screen.dart';
 import '../chat_transcript_sheet.dart';
@@ -162,6 +163,14 @@ class PipStageHeader extends StatelessWidget {
                       },
                     ),
                   if (showNavActions) ...[
+                    IconButton(
+                      icon: const Icon(Icons.alarm, color: PipColors.ink, size: 22),
+                      tooltip: "Alarms & reminders",
+                      onPressed: () {
+                        PipSfxService.blip();
+                        AlarmsRemindersScreen.open(context);
+                      },
+                    ),
                     IconButton(
                       icon: const Icon(Icons.psychology_outlined, color: PipColors.ink, size: 22),
                       tooltip: "What Pip knows",

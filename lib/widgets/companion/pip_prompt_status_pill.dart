@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../../core/theme/apple_theme.dart';
 import '../../core/theme/app_motion_tokens.dart';
+import '../pip_text_switcher.dart';
 
 /// A playful, iOS-style comic speech bubble for the human user prompt.
 /// Features a subtle speech tail, human avatar icon, and fluid spring entrance animation.
@@ -87,10 +88,9 @@ class PipPromptStatusPill extends StatelessWidget {
           ),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 4),
-          child: AnimatedSwitcher(
-            duration: AppMotionTokens.fast,
-            child: Container(
-              key: ValueKey(statusText),
+          child: PipTextSwitcher(
+            text: statusText,
+            builder: (context, status) => Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
               decoration: BoxDecoration(
                 color: Colors.black.withValues(alpha: 0.40),
@@ -98,7 +98,7 @@ class PipPromptStatusPill extends StatelessWidget {
                 border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
               ),
               child: Text(
-                statusText,
+                status,
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 12,

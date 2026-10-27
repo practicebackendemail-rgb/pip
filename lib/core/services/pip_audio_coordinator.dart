@@ -123,6 +123,7 @@ class PipAudioCoordinator extends ChangeNotifier {
     _sessionState = PipAudioSessionState.activeCommandListening;
     _lastRecognizedWords = '';
     notifyListeners();
+    PipSfxService.listen(); // "boop-beep": the mic is open
 
     try {
       await _speech.listen(
@@ -167,7 +168,7 @@ class PipAudioCoordinator extends ChangeNotifier {
     _speech.stop();
     notifyListeners();
     Future.delayed(const Duration(milliseconds: 300), () {
-      PipSfxService.chirp();
+      PipSfxService.listen();
       if (followUp.isNotEmpty && onCommandReceived != null) {
         onCommandReceived!(followUp);
       } else {

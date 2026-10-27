@@ -109,8 +109,14 @@ class VoiceService extends ChangeNotifier {
 
     // TTS Setup (Speech-to-Text has been migrated to PipAudioCoordinator to avoid dual-engine audio hardware conflicts)
     try {
+      // Prefer Google's engine, but only if it's installed: many phones
+      // (Samsung included) ship only their own, and forcing a missing
+      // engine leaves Pip silent.
       if (defaultTargetPlatform == TargetPlatform.android) {
-        await _flutterTts.setEngine("com.google.android.tts");
+        final engines = await _flutterTts.getEngines;
+        if (engines is List && engines.contains("com.google.android.tts")) {
+          await _flutterTts.setEngine("com.google.android.tts");
+        }
       }
       await _flutterTts.awaitSpeakCompletion(false); // Non-blocking
       await _flutterTts.setVolume(1.0);

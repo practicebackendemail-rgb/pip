@@ -123,6 +123,9 @@ void main() {
     await cubit.handleQuery('What is the best integer?');
 
     expect(cubit.state.isLoading, isFalse);
+    // The voice is on by default, so the reply is typed out (and spoken)
+    // over a few frames rather than appearing at once.
+    await Future<void>.delayed(const Duration(milliseconds: 100));
     expect(cubit.state.speechText, isNotEmpty);
     cubit.close();
   });

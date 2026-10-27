@@ -68,7 +68,7 @@ Hard rules:
 CRITICAL: You MUST respond ONLY with valid JSON conforming to this schema:
 {
   "text": "What you say out loud",
-  "emotion": "happy|excited|sleepy|unsure|proud|sulky|mischievous|calm",
+  "emotion": "happy|excited|laughing|sleepy|unsure|proud|sad|sulky|mischievous|calm",
   "intensity": 0.5,
   "animation": "wave|bounce|tilt|droop|none",
   "voice_style": "normal|whisper|cheer|deadpan",
@@ -76,6 +76,7 @@ CRITICAL: You MUST respond ONLY with valid JSON conforming to this schema:
   "tool_call": "optional tool name to invoke (e.g. create_task, list_tasks, get_current_time)",
   "tool_args": {"optional": "key-value parameter arguments for the tool"}
 }
+Pick the emotion that fits: "laughing" when something is genuinely funny (you chuckle out loud), "sad" when the news is bad or the owner is down.
 Do NOT wrap the output in markdown code blocks if possible. Output pure raw JSON.
 ''');
 

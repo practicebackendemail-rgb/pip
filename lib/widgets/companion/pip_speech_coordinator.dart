@@ -13,6 +13,7 @@ class PipSpeechCoordinator {
   void triggerSpeech({
     required String fullText,
     bool isHappy = false,
+    PipSound? sound,
     required void Function() onTick,
     required void Function() onDone,
   }) {
@@ -20,13 +21,8 @@ class PipSpeechCoordinator {
     _displayedSpeechText = '';
     _isTypewriting = true;
 
-    if (isHappy) {
-      HapticFeedback.mediumImpact();
-      PipSfxService.happy();
-    } else {
-      HapticFeedback.lightImpact();
-      PipSfxService.chirp();
-    }
+    isHappy ? HapticFeedback.mediumImpact() : HapticFeedback.lightImpact();
+    PipSfxService.play(sound ?? (isHappy ? PipSound.happy : PipSound.chirp));
     onTick();
 
     int index = 0;

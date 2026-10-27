@@ -67,7 +67,10 @@ Unit tests use fakes, so a passing test proves the logic, not the integration.
 |---|---|---|
 | Email sends over SMTP; reports success only when the server accepts the message | Working (logic) / Unverified (live) | `real_tools_test.dart` with a fake service |
 | Calendar via `device_calendar_plus` (Android and iOS); error on Windows | Working (logic) / Unverified (device) | `real_tools_test.dart` |
-| Reminders scheduled with `zonedSchedule` (inexact); in-app timer on Windows | Working (logic) / Unverified (device) | Not yet checked that a reminder fires after the app is closed |
+| Reminders and alarms scheduled with `zonedSchedule`: exact when "Alarms & reminders" is allowed, inexact otherwise; weekly repeats; in-app timer on Windows | Working (logic) / Unverified (device) | `reminders_test.dart`, `alarm_tools_test.dart`. The manifest was missing the plugin's receivers, so before 2026-10-27 scheduled reminders never fired on Android. |
+| Pip's own alarms: alarm sound, full-screen over the lock screen, Snooze 10 min / Dismiss; replaces the Clock-app hand-off | Unverified (device) | Needs a phone test: lock screen, Do Not Disturb, after reboot |
+| Alarms & reminders screen: list, add, edit, on/off, swipe to delete, permission banner, mini Pip that sets them by chat | Working (logic) / Unverified (device) | `reminders_test.dart` covers the cubits; the screen has no widget test yet |
+| Rescheduling after reboot and on app start | Unverified (device) | Boot receiver added; `rescheduleAll()` runs at startup |
 
 ## Sync
 

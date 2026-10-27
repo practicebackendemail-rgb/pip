@@ -136,7 +136,8 @@ void main() {
       expect(mockLlm.callCount, equals(6));
       expect(mockLlm.forcedPlainTextTriggered, isTrue);
       expect(cubit.state.isLoading, isFalse);
-      expect(cubit.state.statusText, equals('Pip reacted (happy)'));
+      // Voice is on by default, so Pip speaks its reply.
+      expect(cubit.state.statusText, equals('Pip replied (happy)'));
       cubit.close();
     });
   });

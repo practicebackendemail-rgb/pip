@@ -26,6 +26,18 @@ class PipPhysicalReactionDispatcher {
       case 'sleep':
         PipSfxService.sleep();
         break;
+      case 'laugh':
+        PipSfxService.laugh();
+        break;
+      case 'sad':
+        PipSfxService.sad();
+        break;
+      case 'excited':
+        PipSfxService.excited();
+        break;
+      case 'unsure':
+        PipSfxService.unsure();
+        break;
       case 'chirp':
       default:
         PipSfxService.chirp();

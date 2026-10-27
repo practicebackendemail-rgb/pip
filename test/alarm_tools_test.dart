@@ -42,13 +42,14 @@ void main() {
 
   group('Schedule store', () {
     test('keeps upcoming items, drops past one-offs, finds by words', () async {
-      final now = DateTime.now();
+      final now = DateTime(2026, 10, 27, 15); // a Tuesday
       await ScheduleStore.add(ScheduledItem(id: 1, kind: 'reminder', title: 'Call mum', at: now.add(const Duration(hours: 1))));
       await ScheduleStore.add(ScheduledItem(id: 2, kind: 'reminder', title: 'Old', at: now.subtract(const Duration(hours: 1))));
+      // Mon–Wed at 13:00: today's has passed, so it next rings Wednesday.
       await ScheduleStore.add(ScheduledItem(
           id: 3, kind: 'alarm', title: 'Gym', at: now.subtract(const Duration(hours: 2)), days: const [1, 2, 3]));
-      final upcoming = await ScheduleStore.upcoming();
-      expect(upcoming.map((e) => e.id), [3, 1]); // repeating alarm kept, sorted by time
+      final upcoming = await ScheduleStore.upcoming(now: now);
+      expect(upcoming.map((e) => e.id), [1, 3]); // repeating alarm kept, sorted by next ring
       expect((await ScheduleStore.find('gym')).single.id, 3);
       await ScheduleStore.remove(3);
       expect(await ScheduleStore.find('gym'), isEmpty);
