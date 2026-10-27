@@ -1,13 +1,10 @@
 import 'dart:async';
-import 'dart:convert';
-import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:injectable/injectable.dart';
 import '../../../../core/domain/event_log.dart';
 import '../../../../core/domain/llm_provider.dart';
 import '../../../../core/domain/memory_repository.dart';
 import '../../../../core/domain/pip_emotion_state.dart';
-import '../../../../core/domain/pip_tool.dart';
 import '../../../../core/services/email_service.dart';
 import '../../../../core/services/llm_registry_service.dart';
 import '../../../../core/services/pip_home_widget_service.dart';
@@ -21,7 +18,9 @@ import '../../../../widgets/companion/pip_stage_controller.dart';
 import '../../../../widgets/pip_params.dart';
 import '../../domain/pip_character_bible.dart';
 import '../../domain/pip_structured_reply.dart';
+import 'pip_memory_helper.dart';
 import 'pip_stage_state.dart';
+import 'pip_tool_coordinator.dart';
 
 @injectable
 class PipStageCubit extends Cubit<PipStageState> {
@@ -33,6 +32,8 @@ class PipStageCubit extends Cubit<PipStageState> {
   final EmailService emailService;
   final PipToolRegistry toolRegistry;
   final PipSpeechCoordinator _speech = PipSpeechCoordinator();
+  late final PipToolCoordinator _toolCoordinator;
+  late final PipMemoryHelper _memoryHelper;
 
   PipStageCubit({
     required this.llmRegistry,
@@ -43,6 +44,8 @@ class PipStageCubit extends Cubit<PipStageState> {
     required this.emailService,
     required this.toolRegistry,
   }) : super(const PipStageState()) {
+    _toolCoordinator = PipToolCoordinator(toolRegistry: toolRegistry, eventLog: eventLog);
+    _memoryHelper = PipMemoryHelper(memoryRepository);
     _initGreeting();
     _syncHomeWidget();
   }
@@ -56,9 +59,7 @@ class PipStageCubit extends Cubit<PipStageState> {
     );
   }
 
-  void _initGreeting() {
-    speak("Hi there! I'm Pip, your desk companion. What are we building or tackling today?", isHappy: true);
-  }
+  void _initGreeting() => speak("Hi there! I'm Pip, your desk companion. What are we building or tackling today?", isHappy: true);
 
   void speak(String text, {bool isHappy = false}) {
     emit(state.copyWith(speechText: "", isTypewriting: true, currentMood: PipMood.talking));
@@ -78,16 +79,10 @@ class PipStageCubit extends Cubit<PipStageState> {
     PipSfxService.happy();
     emotionState.onWakeTriggered();
     eventLog.log('pip_awakened');
-    emit(state.copyWith(
-      isSleeping: false,
-      currentMood: PipMood.excited,
-      statusText: "Pip is wide awake!",
-    ));
+    emit(state.copyWith(isSleeping: false, currentMood: PipMood.excited, statusText: "Pip is wide awake!"));
     speak("I'm awake and ready to go!", isHappy: true);
     Timer(const Duration(milliseconds: 1400), () {
-      if (!isClosed && state.currentMood == PipMood.excited) {
-        emit(state.copyWith(currentMood: PipMood.idle));
-      }
+      if (!isClosed && state.currentMood == PipMood.excited) emit(state.copyWith(currentMood: PipMood.idle));
     });
   }
 
@@ -95,23 +90,12 @@ class PipStageCubit extends Cubit<PipStageState> {
     PipSfxService.sleep();
     emotionState.onSleepTriggered();
     eventLog.log('pip_slept');
-    emit(state.copyWith(
-      isSleeping: true,
-      overlay: CompanionOverlay.none,
-      currentMood: PipMood.sleeping,
-      statusText: "Pip is sleeping (Zzz)",
-    ));
+    emit(state.copyWith(isSleeping: true, overlay: CompanionOverlay.none, currentMood: PipMood.sleeping, statusText: "Pip is sleeping (Zzz)"));
     speak("Entering sleep mode... Zzz. Say 'Hey Pip' or tap me to wake me up.");
   }
 
-  void setOverlay(CompanionOverlay overlay) {
-    emit(state.copyWith(overlay: overlay));
-  }
-
-  void dismissOverlay() {
-    emit(state.copyWith(overlay: CompanionOverlay.none));
-  }
-
+  void setOverlay(CompanionOverlay overlay) => emit(state.copyWith(overlay: overlay));
+  void dismissOverlay() => emit(state.copyWith(overlay: CompanionOverlay.none));
   void clearSpeechBubble() {
     _speech.clear();
     emit(state.copyWith(speechText: "", isTypewriting: false));
@@ -120,7 +104,6 @@ class PipStageCubit extends Cubit<PipStageState> {
   Future<void> handleQuery(String query) async {
     final userText = query.trim();
     if (userText.isEmpty) return;
-    final q = userText.toLowerCase();
 
     eventLog.log('user_query', {'text': userText});
     emotionState.onUserInteraction();
@@ -142,57 +125,24 @@ class PipStageCubit extends Cubit<PipStageState> {
       return;
     }
 
-    emit(state.copyWith(userPromptCallout: userText, speechText: ""));
-
-    if (q.contains("brief") || q.contains("morning") || q.contains("update")) {
-      await triggerBriefing();
-      return;
-    }
-
-    if (q.contains("task") || q.contains("agenda") || q.contains("to do") || q.contains("todo")) {
-      emit(state.copyWith(overlay: CompanionOverlay.tasks, statusText: "Viewing your objectives"));
-      final pending = taskProvider.allTasks.where((t) => !t.isCompleted).length;
-      speak("You've got $pending pending tasks right now. Which one shall we work on?", isHappy: pending == 0);
-      return;
-    }
-
-    emit(state.copyWith(isLoading: true, statusText: "Pip is thinking...", currentMood: PipMood.thinking));
+    emit(state.copyWith(userPromptCallout: userText, speechText: "", isLoading: true, statusText: "Pip is thinking...", currentMood: PipMood.thinking));
     PipSfxService.thinking();
 
     try {
       final provider = llmRegistry.getActiveProvider();
       final embeddingProvider = llmRegistry.getEmbeddingProvider();
 
-      // Retrieve relevant memories & rules
       final activeRules = await memoryRepository.getActiveRules();
-
-      // Semantic embedding of user query
-      List<double> queryVector = const [];
-      if (userText.trim().split(RegExp(r'\s+')).length > 2 &&
-          embeddingProvider.capabilities.supportsEmbeddings) {
-        try {
-          final embList = await embeddingProvider.embed([userText.trim()]);
-          if (embList.isNotEmpty && embList.first.isNotEmpty) {
-            queryVector = embList.first;
-          }
-        } catch (e) {
-          debugPrint('Query embedding error: $e');
-        }
-      }
-
-      final relevantMemories = await memoryRepository.searchMemories(
-        queryVector,
-        limit: 3,
-        queryText: userText,
-      );
+      final memories = await _memoryHelper.retrieveRelevantMemories(queryText: userText, embeddingProvider: embeddingProvider);
 
       final systemContext = PipCharacterBible.buildSystemPrompt(
         emotionContext: emotionState.toPromptContext(),
         humorLevel: 0.6,
         activeRules: activeRules.map((r) => r.instruction).toList(),
-        relevantMemories: relevantMemories.map((m) => m.text).toList(),
+        relevantMemories: memories.map((m) => m.text).toList(),
         toolsContext: toolRegistry.buildToolsPromptContext(),
       );
+
       final messages = [
         LlmMessage(role: 'system', content: systemContext),
         LlmMessage(role: 'user', content: userText),
@@ -202,147 +152,94 @@ class PipStageCubit extends Cubit<PipStageState> {
       int iterations = 0;
       final toolSpecs = provider.capabilities.supportsTools ? toolRegistry.toToolSpecs() : null;
 
-      // Multi-turn tool calling loop (capped at 5 iterations)
       while (iterations < 5) {
         iterations++;
         response = await provider.chat(
           messages,
           tools: toolSpecs,
           jsonSchema: toolSpecs == null ? PipStructuredReply.jsonSchema : null,
-        );
+        ).timeout(const Duration(seconds: 45));
 
-        // Check for native tool calls or structured JSON tool calls
-        List<ToolCallRequest> callsToExecute = List.from(response.toolCalls);
+        List<ToolCallRequest> calls = List.from(response.toolCalls);
         PipStructuredReply? structured;
 
-        if (callsToExecute.isEmpty) {
+        if (calls.isEmpty) {
           structured = PipStructuredReply.parseRaw(response.text);
           if (structured.toolCallName != null && structured.toolCallName!.isNotEmpty) {
-            callsToExecute.add(ToolCallRequest(
-              toolName: structured.toolCallName!,
-              arguments: structured.toolCallArgs ?? {},
-            ));
+            calls.add(ToolCallRequest(toolName: structured.toolCallName!, arguments: structured.toolCallArgs ?? {}));
           }
         }
 
-        if (callsToExecute.isEmpty) {
-          // Model completed its thoughts; parse final text
+        if (calls.isEmpty) {
           final parsed = structured ?? PipStructuredReply.parseRaw(response.text);
-          final cleanText = PipStageController.executePipActions(parsed.text, taskProvider);
-          final resolvedMood = parsed.toPipMood();
-
-          // Save learned memory candidates
-          for (final candidate in parsed.memoryCandidates) {
-            List<double>? candidateVector;
-            if (embeddingProvider.capabilities.supportsEmbeddings) {
-              try {
-                final emb = await embeddingProvider.embed([candidate]);
-                if (emb.isNotEmpty && emb.first.isNotEmpty) candidateVector = emb.first;
-              } catch (_) {}
-            }
-            await memoryRepository.recordMemory(candidate, embedding: candidateVector, importance: 0.8);
-          }
-
-          if (parsed.emotion == 'happy' || parsed.emotion == 'proud' || parsed.emotion == 'excited') {
-            PipSfxService.happy();
-          }
-
-          if (state.isSilentCompanionMode) {
-            emit(state.copyWith(
-              isLoading: false,
-              statusText: "Pip reacted (${parsed.emotion})",
-              currentMood: resolvedMood,
-              speechText: cleanText,
-              isTypewriting: false,
-            ));
-          } else {
-            emit(state.copyWith(
-              isLoading: false,
-              statusText: "Pip replied (${parsed.emotion})",
-              currentMood: resolvedMood,
-            ));
-            speak(cleanText, isHappy: parsed.emotion == 'happy' || parsed.emotion == 'excited');
-          }
+          await _finishReply(parsed, embeddingProvider);
           return;
         }
 
-        // Execute tool calls adhering to confirmation levels
-        for (final call in callsToExecute) {
-          final tool = toolRegistry.getTool(call.toolName);
-          if (tool == null) continue;
-
-          // If tool requires confirmation (Level 1 or 3), halt loop and prompt user
-          if (tool.confirmationLevel == ToolConfirmationLevel.level1ConfirmAction ||
-              tool.confirmationLevel == ToolConfirmationLevel.level3DangerousDoubleConfirm) {
-            await _processToolCall(call.toolName, call.arguments, response.text, PipMood.idle);
-            return;
-          }
-
-          // Level 0 or 2: Execute immediately
-          eventLog.log('tool_invoked', {'tool': call.toolName, 'args': call.arguments});
-          final result = await tool.execute(call.arguments);
-          eventLog.log('tool_success', {'tool': call.toolName, 'result': result});
-
-          messages.add(LlmMessage(role: 'assistant', content: 'Invoked tool: ${call.toolName}'));
-          messages.add(LlmMessage(role: 'user', content: 'Tool Result for ${call.toolName}: ${jsonEncode(result)}'));
+        final execResult = await _toolCoordinator.executeCalls(calls, messages);
+        if (execResult.requiresConfirmation) {
+          emit(state.copyWith(
+            isLoading: false,
+            currentMood: PipMood.idle,
+            statusText: "Confirmation Required",
+            pendingActionConfirmation: {
+              'tool': execResult.pendingToolName,
+              'args': execResult.pendingArgs,
+              'description': execResult.pendingDescription,
+              'level': execResult.pendingLevel?.name,
+            },
+          ));
+          speak("Should I proceed with executing ${execResult.pendingToolName}?");
+          return;
         }
       }
+
+      response = await provider.chat(messages, tools: null, jsonSchema: PipStructuredReply.jsonSchema).timeout(const Duration(seconds: 45));
+      await _finishReply(PipStructuredReply.parseRaw(response.text), embeddingProvider);
     } catch (e) {
-      emit(state.copyWith(isLoading: false, statusText: "Pip had trouble responding", currentMood: PipMood.unsure));
+      emit(state.copyWith(statusText: "Pip had trouble responding", currentMood: PipMood.unsure));
       speak("My circuits encountered an error: $e");
+    } finally {
+      if (state.isLoading) emit(state.copyWith(isLoading: false));
     }
   }
 
-  Future<void> _processToolCall(String name, Map<String, dynamic> args, String spokenReply, PipMood mood) async {
-    final tool = toolRegistry.getTool(name);
-    if (tool == null) {
-      emit(state.copyWith(isLoading: false, currentMood: mood));
-      speak(spokenReply);
-      return;
+  Future<void> _finishReply(PipStructuredReply parsed, LlmProvider embeddingProvider) async {
+    final cleanText = PipStageController.executePipActions(parsed.text, taskProvider);
+    final resolvedMood = parsed.toPipMood();
+    await _memoryHelper.saveLearnedMemories(parsed.memoryCandidates, embeddingProvider);
+
+    if (parsed.emotion == 'happy' || parsed.emotion == 'proud' || parsed.emotion == 'excited') {
+      PipSfxService.happy();
     }
 
-    eventLog.log('tool_invoked', {'tool': name, 'args': args, 'level': tool.confirmationLevel.name});
-
-    // Level 0 (Read-Only) or Level 2 (Report After) -> execute immediately
-    if (tool.confirmationLevel == ToolConfirmationLevel.level0ReadOnly ||
-        tool.confirmationLevel == ToolConfirmationLevel.level2ReportAfter) {
-      try {
-        final result = await tool.execute(args);
-        eventLog.log('tool_success', {'tool': name, 'result': result});
-        emit(state.copyWith(isLoading: false, currentMood: mood, statusText: "Executed ${tool.name}"));
-        speak(spokenReply.isNotEmpty ? spokenReply : "Done! I took care of that for you.", isHappy: true);
-      } catch (e) {
-        emit(state.copyWith(isLoading: false, currentMood: PipMood.unsure, statusText: "Action failed"));
-        speak("I encountered an issue executing $name: $e");
-      }
-      return;
+    if (state.isSilentCompanionMode) {
+      emit(state.copyWith(
+        isLoading: false,
+        statusText: "Pip reacted (${parsed.emotion})",
+        currentMood: resolvedMood,
+        speechText: cleanText,
+        isTypewriting: false,
+      ));
+    } else {
+      emit(state.copyWith(
+        isLoading: false,
+        statusText: "Pip replied (${parsed.emotion})",
+        currentMood: resolvedMood,
+        speechText: cleanText,
+      ));
+      speak(cleanText, isHappy: parsed.emotion == 'happy' || parsed.emotion == 'excited');
     }
-
-    // Level 1 (Confirm Action) or Level 3 (Dangerous Double-Confirm) -> Prompt user via confirmation card
-    emit(state.copyWith(
-      isLoading: false,
-      currentMood: PipMood.idle,
-      statusText: "Confirmation Required",
-      pendingActionConfirmation: {
-        'tool': name,
-        'args': args,
-        'description': tool.description,
-        'level': tool.confirmationLevel.name,
-      },
-    ));
-    speak(spokenReply.isNotEmpty ? spokenReply : "Should I proceed with executing $name?");
   }
 
   Future<void> confirmPendingAction() async {
     final pending = state.pendingActionConfirmation;
     if (pending == null) return;
-
     final toolName = pending['tool'] as String;
     final args = pending['args'] as Map<String, dynamic>;
     final tool = toolRegistry.getTool(toolName);
 
     emit(state.copyWith(clearPendingAction: true, isLoading: true, statusText: "Executing action..."));
-
     if (tool != null) {
       try {
         final res = await tool.execute(args);
@@ -365,14 +262,7 @@ class PipStageCubit extends Cubit<PipStageState> {
   }
 
   Future<void> triggerBriefing() async {
-    emit(state.copyWith(
-      isLoading: true,
-      isSleeping: false,
-      overlay: CompanionOverlay.briefing,
-      userPromptCallout: "☀️ Daily Briefing",
-      statusText: "Pip is digesting your agenda...",
-      currentMood: PipMood.thinking,
-    ));
+    emit(state.copyWith(isLoading: true, isSleeping: false, overlay: CompanionOverlay.briefing, userPromptCallout: "☀️ Daily Briefing", statusText: "Pip is digesting your agenda...", currentMood: PipMood.thinking));
 
     final emails = await emailService.fetchUnreadSummaries();
     final tasks = taskProvider.allTasks.where((t) => !t.isCompleted).toList();
@@ -380,14 +270,9 @@ class PipStageCubit extends Cubit<PipStageState> {
     try {
       final provider = llmRegistry.getActiveProvider();
       final prompt = 'Summarize daily agenda concisely:\nTasks: ${tasks.map((t) => t.title).join(", ")}\nEmails: ${emails.join(", ")}';
-      final response = await provider.chat([LlmMessage(role: 'user', content: prompt)]);
+      final response = await provider.chat([LlmMessage(role: 'user', content: prompt)]).timeout(const Duration(seconds: 45));
 
-      emit(state.copyWith(
-        briefingContent: response.text,
-        isLoading: false,
-        statusText: "Morning Briefing Ready",
-        currentMood: PipMood.happy,
-      ));
+      emit(state.copyWith(briefingContent: response.text, isLoading: false, statusText: "Morning Briefing Ready", currentMood: PipMood.happy));
       speak("Here is your morning agenda! Check the card below for the action plan.", isHappy: true);
     } catch (e) {
       emit(state.copyWith(isLoading: false, statusText: "Failed to generate briefing", currentMood: PipMood.unsure));
