@@ -1,0 +1,1 @@
+{"status": "ollama_offline", "distilled": "lib/core/services/email_service.dart:58:    final pass = prefs.getString('mail_pass');\nlib/core/services/email_service.dart:103:      await prefs.setString('mail_pass', pass);", "files_touched": ["lib/core/services/email_service.dart:58", "lib/core/services/email_service.dart:103"]}

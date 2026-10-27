@@ -1,0 +1,1 @@
+{"status": "ollama_offline", "distilled": "lib/features/companion/domain/pip_structured_reply.dart:59:  factory PipStructuredReply.parseRaw(String raw) {", "files_touched": ["lib/features/companion/domain/pip_structured_reply.dart:59"]}

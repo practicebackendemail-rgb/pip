@@ -1,0 +1,1 @@
+{"status": "ollama_offline", "distilled": "lib/core/domain/encrypted_memory_db.dart:116:  Future<List<MemoryItem>> getAllMemories() async {", "files_touched": ["lib/core/domain/encrypted_memory_db.dart:116"]}

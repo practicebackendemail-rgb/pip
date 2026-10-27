@@ -1,0 +1,241 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Pip, your desk companion</title>
+<link href="https://fonts.googleapis.com/css2?family=Chivo:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  color-scheme:light;
+  --bg:#cdd6cf;--ink:#1f2a2e;--muted:#4f5d61;--chip:#e6ece7;--chipb:#9aa8a0;
+  --body:#dca21e;--rust:#a4551f;--lidc:#b9791d;--lens:#151a1c;--ground:#b5c0b8;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --bg:#161c1f;--ink:#e8eceb;--muted:#9fb0b3;--chip:#232c30;--chipb:#3b4a4f;--ground:#101517;
+    --body:#e2a826;--rust:#b4602a;--lidc:#c0821f;--lens:#0b0f10;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#161c1f;--ink:#e8eceb;--muted:#9fb0b3;--chip:#232c30;--chipb:#3b4a4f;--ground:#101517;
+  --body:#e2a826;--rust:#b4602a;--lidc:#c0821f;--lens:#0b0f10;
+}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;min-height:100vh;background:var(--bg);color:var(--ink);font-family:"Chivo",system-ui,-apple-system,"Segoe UI",sans-serif;
+  display:flex;flex-direction:column;align-items:center;padding:20px 16px 28px;gap:14px}
+h1{font-size:1.15rem;font-weight:600;margin:4px 0 0;letter-spacing:.01em}
+#stage{width:100%;max-width:440px;height:auto;display:block;
+  --lid:0;--low:0;--tilt:0;--px:0;--py:0;--s:1;--head:0;--bob:0}
+#head{transform-origin:200px 215px;transform:rotate(calc(var(--head)*1deg)) translateY(calc(var(--bob)*1px));transition:transform .4s cubic-bezier(.3,1.3,.5,1)}
+.eye{transform:scale(var(--s));transition:transform .35s cubic-bezier(.3,1.5,.5,1)}
+.hous{fill:var(--body);stroke:var(--rust);stroke-width:5}
+.lens{fill:var(--lens)}
+.pupil{transform:translate(calc(var(--px)*1px),calc(var(--py)*1px));transition:transform .3s ease}
+.pup{fill:#05080a}.glint{fill:#fff;opacity:.9}
+.lid{fill:var(--lidc)}
+.top{transform:translateY(calc(-70px + var(--lid)*132px)) rotate(calc(var(--tilt)*var(--sign)*1deg));transition:transform .18s ease}
+.low{transform:translateY(calc(70px - var(--low)*132px));transition:transform .25s ease}
+.stalk{fill:var(--rust)}.torso{fill:var(--body)}.strip{fill:var(--rust)}.ground{fill:var(--ground)}
+#status{font-size:.95rem;color:var(--muted);min-height:1.4em;text-align:center}
+#said{max-width:440px;text-align:center;font-size:1.05rem;line-height:1.45;min-height:3em}
+.row{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;max-width:440px}
+button{font:inherit;font-size:.9rem;color:var(--ink);background:var(--chip);border:1.5px solid var(--chipb);border-radius:999px;padding:9px 15px;cursor:pointer}
+button:focus-visible,input:focus-visible{outline:3px solid var(--body);outline-offset:2px}
+button.go{background:var(--body);border-color:var(--rust);color:#1b1409;font-weight:600}
+button[aria-pressed="true"]{border-color:var(--rust);box-shadow:inset 0 0 0 1.5px var(--rust)}
+.say{display:flex;gap:8px;width:100%;max-width:440px}
+input{flex:1;min-width:0;font:inherit;padding:10px 14px;border-radius:999px;border:1.5px solid var(--chipb);background:var(--chip);color:var(--ink)}
+small{color:var(--muted);max-width:440px;text-align:center;line-height:1.4}
+@media (prefers-reduced-motion:reduce){*{transition-duration:.01s!important}}
+</style>
+</head>
+<body>
+<h1>Pip</h1>
+<svg id="stage" viewBox="0 0 400 300" role="img" aria-label="Pip, a small robot with binocular eyes">
+  <defs><clipPath id="c"><rect x="-62" y="-62" width="124" height="124" rx="36"/></clipPath></defs>
+  <rect class="ground" x="0" y="280" width="400" height="20"/>
+  <rect class="torso" x="90" y="222" width="220" height="62" rx="14"/>
+  <rect class="strip" x="90" y="262" width="220" height="10"/>
+  <rect class="strip" x="270" y="234" width="24" height="12" rx="3"/>
+  <g id="head">
+    <rect class="stalk" x="121" y="170" width="18" height="56"/>
+    <rect class="stalk" x="261" y="170" width="18" height="56"/>
+    <g transform="translate(130 120)" id="eL"></g>
+    <g transform="translate(270 120)" id="eR"></g>
+  </g>
+</svg>
+<div id="status" aria-live="polite">Idle</div>
+<div id="said" aria-live="polite">Say hi, or type below.</div>
+
+<div class="row" id="states"></div>
+
+<div class="row">
+  <button class="go" id="mic">Talk to Pip</button>
+  <button id="brief">Morning briefing (demo)</button>
+</div>
+<div class="say">
+  <input id="txt" placeholder="Type a message" aria-label="Message to Pip" autocomplete="off">
+  <button id="send">Send</button>
+</div>
+<small>The briefing uses made-up sample data. Replies are simple built-in rules until you connect a real AI backend.</small>
+
+<script>
+(function(){
+  var svg=document.getElementById("stage");
+  function eye(sign){
+    return '<g class="eye" style="--sign:'+sign+'">'+
+      '<rect class="hous" x="-62" y="-62" width="124" height="124" rx="36"/>'+
+      '<g clip-path="url(#c)"><circle class="lens" r="46"/>'+
+      '<g class="pupil"><circle class="pup" r="22"/><circle class="glint" cx="-8" cy="-9" r="6"/></g>'+
+      '<rect class="lid top" x="-80" y="-150" width="160" height="150"/>'+
+      '<rect class="lid low" x="-80" y="0" width="160" height="150"/></g>'+
+      '<rect class="hous" x="-62" y="-62" width="124" height="124" rx="36" style="fill:none"/></g>';
+  }
+  document.getElementById("eL").innerHTML=eye(1);
+  document.getElementById("eR").innerHTML=eye(-1);
+
+  var BASE={lid:0,low:0,tilt:0,px:0,py:0,s:1,head:0,bob:0};
+  var STATES={
+    idle:{label:"Idle",v:{}},
+    listening:{label:"Listening…",v:{s:1.12,py:-4,head:3}},
+    thinking:{label:"Thinking…",v:{lid:.28,low:.08,px:-16,py:-18,head:-7,tilt:9}},
+    talking:{label:"Talking",v:{s:1.03}},
+    happy:{label:"Happy",v:{low:.5,py:-3,s:1.05,head:4}},
+    unsure:{label:"Not sure",v:{lid:.12,tilt:16,head:-5,px:8,py:4}},
+    sleepy:{label:"Sleepy",v:{lid:.65,low:.1,py:6,head:6,s:.97}},
+    excited:{label:"Excited",v:{s:1.15,low:.35,py:-6,tilt:-8}}
+  };
+  var cur="idle",curV=Object.assign({},BASE);
+  function apply(o){for(var k in o){svg.style.setProperty("--"+k,o[k]);}}
+  var fx=null,lastActive=Date.now();
+  function setState(n){
+    clearInterval(fx);
+    cur=n;curV=Object.assign({},BASE,STATES[n].v);apply(curV);
+    if(n!=="idle"&&n!=="sleepy")lastActive=Date.now();
+    if(n==="excited"){var up=0;fx=setInterval(function(){up=!up;apply({bob:up?-10:0});},260);}
+    if(n==="sleepy"){var d=0;fx=setInterval(function(){d=!d;curV.lid=d?.75:.62;apply({bob:d?4:0,lid:curV.lid});},1700);}
+    document.getElementById("status").textContent=STATES[n].label;
+    document.querySelectorAll("#states button").forEach(function(b){b.setAttribute("aria-pressed",b.dataset.s===n?"true":"false");});
+  }
+  var bar=document.getElementById("states");
+  ["idle","listening","thinking","happy","unsure","sleepy","excited"].forEach(function(n){
+    var b=document.createElement("button");b.textContent=STATES[n].label.replace("…","");b.dataset.s=n;
+    b.onclick=function(){stopAll();setState(n);};bar.appendChild(b);
+  });
+
+  /* blink and look around */
+  function blink(){
+    apply({lid:1});
+    setTimeout(function(){apply({lid:curV.lid});},130);
+    setTimeout(blink,2200+Math.random()*3200);
+  }
+  setTimeout(blink,2500);
+  setInterval(function(){
+    if(cur!=="idle")return;
+    apply({px:Math.round((Math.random()-.5)*26),py:Math.round((Math.random()-.5)*14),head:Math.round((Math.random()-.5)*6)});
+  },2600);
+
+  /* speaking */
+  var talkTimer=null,idleTimer=null,synth=window.speechSynthesis,seq=0;
+  setInterval(function(){if(cur==="idle"&&Date.now()-lastActive>45000)setState("sleepy");},5000);
+  function wake(){
+    lastActive=Date.now();
+    if(cur!=="sleepy")return;
+    setState("excited");idleTimer=setTimeout(function(){setState("idle");},1400);
+  }
+  document.addEventListener("pointerdown",wake,true);
+  document.addEventListener("keydown",wake,true);
+  function stopAll(){
+    seq++;clearInterval(talkTimer);clearTimeout(idleTimer);
+    if(synth)synth.cancel();
+    if(rec){try{rec.abort();}catch(e){}}
+  }
+  function said(t){document.getElementById("said").textContent=t;}
+  function speak(text,then,mood){
+    var t=seq;
+    said(text);setState("talking");
+    if(mood){curV=Object.assign({},BASE,STATES[mood].v);apply(curV);}
+    clearInterval(talkTimer);
+    talkTimer=setInterval(function(){
+      apply({bob:(Math.random()*-7).toFixed(1),s:(1+Math.random()*.08).toFixed(2),px:Math.round((Math.random()-.5)*8),py:Math.round((Math.random()-.5)*6)});
+    },150);
+    function done(){
+      if(t!==seq)return;
+      clearInterval(talkTimer);apply({bob:0});
+      if(then){then();return;}
+      setState("happy");idleTimer=setTimeout(function(){setState("idle");},1600);
+    }
+    if(synth&&window.SpeechSynthesisUtterance){
+      var u=new SpeechSynthesisUtterance(text);u.rate=1.02;u.pitch=1.25;
+      u.onend=done;u.onerror=done;synth.speak(u);
+    }else{idleTimer=setTimeout(done,Math.max(1500,text.length*55));}
+  }
+
+  /* brain: swap this function for a call to your own backend */
+  function reply(q){
+    var s=q.toLowerCase();
+    if(/\b(hi|hello|hey)\b/.test(s))return "Hello! I’m Pip. What are we working on today?";
+    if(s.indexOf("time")>-1)return "It’s "+new Date().toLocaleTimeString([],{hour:"numeric",minute:"2-digit"})+".";
+    if(s.indexOf("date")>-1||s.indexOf("day")>-1)return "Today is "+new Date().toLocaleDateString([],{weekday:"long",month:"long",day:"numeric"})+".";
+    if(s.indexOf("thank")>-1)return "Anytime!";
+    return null;
+  }
+  var BSTEPS=[
+    ["Good morning! Here’s your sample briefing.","excited"],
+    ["You have three meetings today. The first is at ten.",null],
+    ["Twelve unread emails, and two look urgent.","unsure"],
+    ["Your top task is the quarterly report. You’ve got this!","happy"]
+  ];
+  function runBrief(){
+    stopAll();
+    var i=0;
+    (function next(){
+      var st=BSTEPS[i++];
+      speak(st[0],i<BSTEPS.length?next:null,st[1]);
+    })();
+  }
+
+  function handle(q){
+    q=q.trim();if(!q)return;
+    stopAll();said("“"+q+"”");setState("thinking");
+    idleTimer=setTimeout(function(){
+      if(/brief/i.test(q)){runBrief();return;}
+      var r=reply(q);
+      if(r){speak(r);}
+      else{
+        setState("unsure");said("I don’t know that one yet. Connect me to a backend to answer anything.");
+        idleTimer=setTimeout(function(){setState("idle");},2800);
+      }
+    },900);
+  }
+
+  /* voice input */
+  var SR=window.SpeechRecognition||window.webkitSpeechRecognition,rec=null;
+  document.getElementById("mic").onclick=function(){
+    if(!SR){said("Voice input isn’t available in this browser. Type instead.");setState("unsure");return;}
+    stopAll();
+    rec=new SR();rec.lang="en-US";rec.interimResults=false;
+    var got=false;
+    rec.onstart=function(){setState("listening");said("I’m listening…");};
+    rec.onresult=function(e){got=true;handle(e.results[0][0].transcript);};
+    rec.onerror=function(e){got=true;setState("unsure");said("Mic problem ("+e.error+"). You can type instead.");};
+    rec.onend=function(){if(!got&&cur==="listening"){setState("idle");said("Didn’t catch that.");}};
+    try{rec.start();}catch(e){setState("unsure");said("Couldn’t start the mic. Type instead.");}
+  };
+  document.getElementById("brief").onclick=runBrief;
+  var txt=document.getElementById("txt");
+  function send(){var v=txt.value;txt.value="";handle(v);}
+  document.getElementById("send").onclick=send;
+  txt.onkeydown=function(e){if(e.key==="Enter")send();};
+
+  setState("idle");
+})();
+</script>
+</body>
+</html>

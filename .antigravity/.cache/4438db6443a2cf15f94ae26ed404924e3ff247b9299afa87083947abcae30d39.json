@@ -1,0 +1,1 @@
+{"status": "ollama_offline", "distilled": "lib/core/services/sync/sync_queue_entry.dart:5:@HiveType(typeId: 0)\nlib/features/dashboard/data/models/marine_consignment_model.dart:6:@HiveType(typeId: 1)", "files_touched": ["lib/core/services/sync/sync_queue_entry.dart:5", "lib/features/dashboard/data/models/marine_consignment_model.dart:6"]}

@@ -1,0 +1,1 @@
+{"status": "ollama_offline", "distilled": "lib/core/services/nightly_reflection_service.dart:207:          await memoryRepository.recordMemory(m.trim(), importance: 0.7);", "files_touched": ["lib/core/services/nightly_reflection_service.dart:207"]}

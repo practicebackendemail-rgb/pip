@@ -1,0 +1,1 @@
+{"status": "ollama_offline", "distilled": "lib/core/domain/pip_emotion_state.dart:7:class PipEmotionState extends ChangeNotifier {", "files_touched": ["lib/core/domain/pip_emotion_state.dart:7"]}

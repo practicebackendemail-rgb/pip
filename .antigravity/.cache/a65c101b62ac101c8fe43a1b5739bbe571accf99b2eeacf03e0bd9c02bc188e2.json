@@ -1,0 +1,1 @@
+{"status": "ollama_offline", "distilled": "lib/core/services/gemini_llm_adapter.dart:120:      'https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:batchEmbedContents?key=$apiKey',", "files_touched": ["lib/core/services/gemini_llm_adapter.dart:120"]}

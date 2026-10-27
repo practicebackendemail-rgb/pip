@@ -1,0 +1,379 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Pip, your desk companion</title>
+<link href="https://fonts.googleapis.com/css2?family=Chivo:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  color-scheme:light;
+  --bg:#cdd6cf;--ink:#1f2a2e;--muted:#4f5d61;--chip:#e6ece7;--chipb:#9aa8a0;--accent:#dca21e;--rust:#a4551f;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --bg:#161c1f;--ink:#e8eceb;--muted:#9fb0b3;--chip:#232c30;--chipb:#3b4a4f;
+    --accent:#e2a826;--rust:#b4602a;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#161c1f;--ink:#e8eceb;--muted:#9fb0b3;--chip:#232c30;--chipb:#3b4a4f;
+  --accent:#e2a826;--rust:#b4602a;
+}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;min-height:100vh;background:var(--bg);color:var(--ink);font-family:"Chivo",system-ui,-apple-system,"Segoe UI",sans-serif;
+  display:flex;flex-direction:column;align-items:center;padding:20px 16px 28px;gap:14px}
+h1{font-size:1.15rem;font-weight:600;margin:4px 0 0;letter-spacing:.01em}
+#stage{width:100%;max-width:680px;height:auto;display:block;border-radius:14px}
+#status{font-size:.95rem;color:var(--muted);min-height:1.4em;text-align:center}
+#said{max-width:440px;text-align:center;font-size:1.05rem;line-height:1.45;min-height:3em}
+.row{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;max-width:440px}
+button{font:inherit;font-size:.9rem;color:var(--ink);background:var(--chip);border:1.5px solid var(--chipb);border-radius:999px;padding:9px 15px;cursor:pointer}
+button:focus-visible,input:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+button.go{background:var(--accent);border-color:var(--rust);color:#1b1409;font-weight:600}
+button[aria-pressed="true"]{border-color:var(--rust);box-shadow:inset 0 0 0 1.5px var(--rust)}
+.say{display:flex;gap:8px;width:100%;max-width:440px}
+input[type="text"]{flex:1;min-width:0;font:inherit;padding:10px 14px;border-radius:999px;border:1.5px solid var(--chipb);background:var(--chip);color:var(--ink)}
+.timebar{display:flex;align-items:center;gap:10px;width:100%;max-width:440px;font-size:.85rem;color:var(--muted)}
+.timebar input[type="range"]{flex:1;min-width:0;accent-color:var(--rust)}
+.timebar button{padding:6px 12px;font-size:.8rem}
+#tl{min-width:4.6em;text-align:right;color:var(--ink);font-weight:600}
+small{color:var(--muted);max-width:440px;text-align:center;line-height:1.4}
+@keyframes tw{0%,100%{opacity:.3}50%{opacity:1}}
+@keyframes sm{0%{transform:translateY(0);opacity:0}30%{opacity:.7}100%{transform:translateY(-18px);opacity:0}}
+.stars circle{animation:tw 3s ease-in-out infinite}
+.sm{animation:sm 2.4s ease-out infinite}
+@media (prefers-reduced-motion:reduce){*{transition-duration:.01s!important}.stars circle,.sm{animation:none}}
+</style>
+</head>
+<body>
+<h1>Pip</h1>
+
+<svg id="stage" viewBox="0 0 680 420" role="img" aria-label="Pip, a small robot on a desk in front of a window that shows the current time of day">
+<defs>
+<linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop id="s0" offset="0" stop-color="#4aa3df"/><stop id="s1" offset="1" stop-color="#a9d8f2"/></linearGradient>
+<radialGradient id="lg"><stop offset="0" stop-color="#ffcf70" stop-opacity=".55"/><stop offset=".55" stop-color="#ffcf70" stop-opacity=".18"/><stop offset="1" stop-color="#ffcf70" stop-opacity="0"/></radialGradient>
+<clipPath id="rc"><rect width="680" height="420" rx="14"/></clipPath>
+<clipPath id="win"><rect x="120" y="28" width="440" height="230" rx="6"/></clipPath>
+<clipPath id="kL"><circle r="38"/></clipPath>
+<clipPath id="kR"><circle r="38"/></clipPath>
+</defs>
+<g clip-path="url(#rc)">
+<rect id="wall" width="680" height="420" fill="#ebe3d5"/>
+<g clip-path="url(#win)">
+<rect x="120" y="28" width="440" height="230" fill="url(#sky)"/>
+<g id="stars" class="stars"></g>
+<circle id="halo" r="44" fill="#ffe9a8" opacity=".25"/><circle id="sun" r="22" fill="#ffe27a"/>
+<g id="moon"><circle r="20" fill="#f4f1e1"/><circle cx="-6" cy="-4" r="4" fill="#dcd8c4"/><circle cx="7" cy="6" r="3" fill="#dcd8c4"/></g>
+<g id="clouds"></g>
+<path id="hf" d="M120 258V215Q190 180 260 210T400 200T560 215V258Z"/>
+<path id="hn" d="M120 258V238Q220 208 320 234T560 230V258Z"/>
+</g>
+<rect x="120" y="28" width="440" height="230" rx="6" fill="none" stroke="#5b4a3a" stroke-width="9"/>
+<path d="M340 28V258M120 143H560" stroke="#5b4a3a" stroke-width="6"/>
+<rect x="108" y="256" width="464" height="12" rx="3" fill="#6b5645"/>
+<rect y="330" width="680" height="90" fill="#8a6a4a"/><rect y="330" width="680" height="10" fill="#a07c57"/>
+<rect x="56" y="292" width="48" height="38" rx="6" fill="#b5651d"/>
+<ellipse cx="68" cy="280" rx="9" ry="22" fill="#4f8f4a" transform="rotate(-24 68 292)"/><ellipse cx="80" cy="274" rx="9" ry="26" fill="#5fa35a"/><ellipse cx="92" cy="280" rx="9" ry="22" fill="#4f8f4a" transform="rotate(24 92 292)"/>
+<rect x="500" y="306" width="34" height="26" rx="5" fill="#e8e4dc"/><path d="M534 313q12 0 12 8t-12 8" fill="none" stroke="#e8e4dc" stroke-width="4"/>
+<g id="steam"><path class="sm" d="M509 302q-4-6 0-12" fill="none" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round"/><path class="sm" style="animation-delay:.8s" d="M520 302q-4-6 0-12" fill="none" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round"/><path class="sm" style="animation-delay:1.5s" d="M529 302q-4-6 0-12" fill="none" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round"/></g>
+<ellipse cx="600" cy="328" rx="26" ry="6" fill="#33383c"/><path d="M600 326V300H569V280" fill="none" stroke="#3a3f45" stroke-width="5" stroke-linejoin="round"/>
+<polygon id="shade" points="548,256 590,256 598,280 540,280" fill="#c9a35a"/>
+
+<g id="pip" transform="translate(204 100) scale(.85)">
+<g id="tr"></g>
+<g class="hd" style="transform-origin:160px 156px;transition:transform .4s cubic-bezier(.3,1.3,.5,1)">
+<rect x="150" y="124" width="20" height="36" fill="#a4551f"/><path d="M150 138H170M150 146H170M150 154H170" stroke="#5a2d0f" stroke-width="2"/>
+<g id="eyes"></g>
+</g>
+<rect x="92" y="150" width="136" height="38" rx="6" fill="#a4551f" stroke="#5a2d0f" stroke-width="3"/>
+<rect x="104" y="158" width="30" height="20" rx="3" fill="#e4e8e6"/><rect x="109" y="164" width="14" height="2.5" fill="#4f5d61"/><rect x="109" y="170" width="20" height="2.5" fill="#4f5d61"/>
+<rect x="168" y="158" width="34" height="20" rx="3" fill="#1c2427"/><circle id="led" cx="178" cy="168" r="4" fill="#6fbf73"/><rect x="187" y="164" width="9" height="3" fill="#ffd77a"/><rect x="187" y="170" width="9" height="3" fill="#ffd77a"/>
+<rect x="98" y="184" width="124" height="88" rx="10" fill="#dca21e" stroke="#a4551f" stroke-width="3"/>
+<rect x="124" y="202" width="9" height="30" rx="4.5" fill="#a4551f"/><rect x="155" y="202" width="9" height="30" rx="4.5" fill="#a4551f"/><rect x="186" y="202" width="9" height="30" rx="4.5" fill="#a4551f"/>
+<text x="160" y="258" text-anchor="middle" font-family="Chivo,system-ui,sans-serif" font-size="14" font-weight="600" letter-spacing="2" fill="#7a3d14">PIP</text>
+<g class="arm l"><rect x="62" y="166" width="44" height="62" rx="10" fill="#8a4a1c" stroke="#5a2d0f" stroke-width="3"/><rect x="67" y="212" width="34" height="26" rx="8" fill="#a4551f" stroke="#5a2d0f" stroke-width="3"/></g>
+<g class="arm r"><rect x="214" y="166" width="44" height="62" rx="10" fill="#8a4a1c" stroke="#5a2d0f" stroke-width="3"/><rect x="219" y="212" width="34" height="26" rx="8" fill="#a4551f" stroke="#5a2d0f" stroke-width="3"/></g>
+</g>
+
+<rect id="ovn" width="680" height="420" fill="#0a1230" opacity="0"/>
+<rect id="ovs" width="680" height="420" fill="#ff8a3d" opacity="0"/>
+<circle id="glow" cx="569" cy="284" r="120" fill="url(#lg)" opacity="0"/>
+</g>
+</svg>
+
+<div class="timebar">
+  <label for="tm">Scene time</label>
+  <input type="range" id="tm" min="0" max="24" step="0.25" value="12" aria-label="Preview time of day">
+  <span id="tl">12:00 PM</span>
+  <button id="live" aria-pressed="true">Live</button>
+</div>
+
+<div id="status" aria-live="polite">Idle</div>
+<div id="said" aria-live="polite">Say hi, or type below.</div>
+
+<div class="row" id="states"></div>
+
+<div class="row">
+  <button class="go" id="mic">Talk to Pip</button>
+  <button id="brief">Morning briefing (demo)</button>
+</div>
+<div class="say">
+  <input type="text" id="txt" placeholder="Type a message" aria-label="Message to Pip" autocomplete="off">
+  <button id="send">Send</button>
+</div>
+<small>The scene follows your device clock. Drag the slider to preview other times, or tap Live to return. The briefing uses made-up sample data. Replies are simple built-in rules until you connect a real AI backend.</small>
+
+<script>
+(function(){
+  var $=function(i){return document.getElementById(i);};
+
+  /* ---------- Pip drawing ---------- */
+  var trk="";
+  [40,218].forEach(function(x){
+    trk+='<rect x="'+x+'" y="172" width="62" height="102" rx="16" fill="#2b2f31"/>';
+    for(var y=184;y<268;y+=12)trk+='<path d="M'+(x+8)+' '+y+'H'+(x+54)+'" stroke="#4a5053" stroke-width="3" stroke-linecap="round"/>';
+  });
+  $("tr").innerHTML=trk;
+  function eye(cx,id){
+    return '<g transform="translate('+cx+' 84)"><g class="tilt" style="transform-origin:0 0;transition:transform .4s cubic-bezier(.3,1.3,.5,1)">'+
+      '<rect x="-52" y="-46" width="104" height="92" rx="34" fill="#dca21e" stroke="#a4551f" stroke-width="5"/>'+
+      '<circle cx="-36" cy="-30" r="4" fill="#a4551f"/><circle cx="36" cy="30" r="4" fill="#a4551f"/>'+
+      '<circle r="42" fill="#1f2a2e"/>'+
+      '<g class="eg" style="transition:transform .35s cubic-bezier(.3,1.5,.5,1)"><g clip-path="url(#'+id+')">'+
+      '<circle r="38" fill="#151a1c"/>'+
+      '<g class="pu" style="transition:transform .3s ease"><circle r="19" fill="#05080a"/><circle cx="-7" cy="-8" r="6" fill="#fff" opacity=".9"/></g>'+
+      '<rect class="lt" x="-42" y="-110" width="84" height="72" fill="#c0821f" style="transition:transform .18s ease"/>'+
+      '<rect class="lb" x="-42" y="38" width="84" height="72" fill="#c0821f" style="transition:transform .25s ease"/>'+
+      '</g></g></g></g>';
+  }
+  $("eyes").innerHTML=eye(108,"kL")+eye(212,"kR");
+
+  var pip=$("pip"),hd=pip.querySelector(".hd"),tl=pip.querySelectorAll(".tilt"),eg=pip.querySelectorAll(".eg"),
+      pu=pip.querySelectorAll(".pu"),lt=pip.querySelectorAll(".lt"),lb=pip.querySelectorAll(".lb"),
+      led=$("led"),armL=pip.querySelector(".arm.l"),armR=pip.querySelector(".arm.r");
+  [armL,armR].forEach(function(a){
+    a.style.transformBox="fill-box";a.style.transformOrigin="50% 0%";
+    a.style.transition="transform .4s cubic-bezier(.3,1.4,.5,1)";
+  });
+
+  var BASE={lid:0,low:0,px:0,py:0,s:1,head:0,bob:0,tilt:14,al:3,ar:3,led:"#6fbf73"};
+  var STATES={
+    idle:{label:"Idle",v:{}},
+    listening:{label:"Listening…",v:{s:1.1,py:-.2,head:3,tilt:9,al:12,ar:12,led:"#4aa3ff"}},
+    thinking:{label:"Thinking…",v:{lid:.28,low:.08,px:-.8,py:-.9,head:-7,tilt:20,al:28,ar:3,led:"#f2b134"}},
+    talking:{label:"Talking",v:{s:1.03}},
+    happy:{label:"Happy",v:{low:.5,py:-.2,s:1.05,head:4,tilt:5,al:40,ar:40}},
+    unsure:{label:"Not sure",v:{lid:.12,px:.5,py:.3,head:-5,tilt:26,al:20,ar:2,led:"#e07a4a"}},
+    sleepy:{label:"Sleepy",v:{lid:.65,low:.1,py:.5,head:6,s:.97,tilt:22,al:-5,ar:-5,led:"#8a8f93"}},
+    excited:{label:"Excited",v:{s:1.15,low:.35,py:-.3,tilt:8,al:45,ar:45}}
+  };
+  var V=Object.assign({},BASE);
+  function render(){
+    hd.style.transform="translateY("+V.bob+"px) rotate("+V.head+"deg)";
+    tl[0].style.transform="rotate("+V.tilt+"deg)";
+    tl[1].style.transform="rotate("+(-V.tilt)+"deg)";
+    eg.forEach(function(g){g.style.transform="scale("+V.s+")";});
+    pu.forEach(function(p){p.style.transform="translate("+(V.px*11)+"px,"+(V.py*8)+"px)";});
+    lt.forEach(function(r){r.style.transform="translateY("+(V.lid*76)+"px)";});
+    lb.forEach(function(r){r.style.transform="translateY("+(-V.low*76)+"px)";});
+    armL.style.transform="rotate("+V.al+"deg)";
+    armR.style.transform="rotate("+(-V.ar)+"deg)";
+    led.setAttribute("fill",V.led);
+  }
+  function apply(o){for(var k in o){V[k]=+o[k]||(k==="led"?o[k]:0);if(k==="led")V.led=o[k];}render();}
+
+  var cur="idle",curV=Object.assign({},BASE);
+  var fx=null,lastActive=Date.now();
+  function setState(n){
+    clearInterval(fx);
+    cur=n;curV=Object.assign({},BASE,STATES[n].v);
+    V=Object.assign({},curV);render();
+    if(n!=="idle"&&n!=="sleepy")lastActive=Date.now();
+    if(n==="excited"){var up=0;fx=setInterval(function(){up=!up;apply({bob:up?-10:0});},260);}
+    if(n==="sleepy"){var d=0;fx=setInterval(function(){d=!d;curV.lid=d?.75:.62;apply({bob:d?4:0,lid:curV.lid});},1700);}
+    $("status").textContent=STATES[n].label;
+    document.querySelectorAll("#states button").forEach(function(b){b.setAttribute("aria-pressed",b.dataset.s===n?"true":"false");});
+  }
+  var bar=$("states");
+  ["idle","listening","thinking","happy","unsure","sleepy","excited"].forEach(function(n){
+    var b=document.createElement("button");b.textContent=STATES[n].label.replace("…","");b.dataset.s=n;
+    b.onclick=function(){stopAll();setState(n);};bar.appendChild(b);
+  });
+
+  /* blink and look around */
+  function blink(){
+    apply({lid:1});
+    setTimeout(function(){apply({lid:curV.lid});},130);
+    setTimeout(blink,2200+Math.random()*3200);
+  }
+  setTimeout(blink,2500);
+  setInterval(function(){
+    if(cur!=="idle")return;
+    apply({px:(Math.random()-.5)*2,py:(Math.random()-.5)*1.2,head:Math.round((Math.random()-.5)*6)});
+  },2600);
+
+  /* ---------- Time-of-day scene ---------- */
+  function hex(c){return [parseInt(c.slice(1,3),16),parseInt(c.slice(3,5),16),parseInt(c.slice(5,7),16)];}
+  function mx(a,b,t){return [a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t,a[2]+(b[2]-a[2])*t];}
+  function css(a){return "rgb("+Math.round(a[0])+","+Math.round(a[1])+","+Math.round(a[2])+")";}
+  function cl(v,a,b){return Math.max(a,Math.min(b,v));}
+  var K=[[0,"#0b1430","#1b2a4e"],[5,"#1d2a55","#4a4a7a"],[6.5,"#8a9bd0","#f7b27a"],[9,"#6fb7e8","#bfe3f5"],[12,"#4aa3df","#a9d8f2"],[16,"#5aaee3","#c8e6f4"],[18.5,"#6b6fb5","#f4a35f"],[20,"#4a3a7a","#c0607a"],[22,"#101a3c","#24305a"],[24,"#0b1430","#1b2a4e"]].map(function(k){return [k[0],hex(k[1]),hex(k[2])];});
+  function skyAt(h){
+    for(var i=0;i<K.length-1;i++){
+      if(h>=K[i][0]&&h<=K[i+1][0]){var t=(h-K[i][0])/(K[i+1][0]-K[i][0]);return [mx(K[i][1],K[i+1][1],t),mx(K[i][2],K[i+1][2],t)];}
+    }
+    return [K[0][1],K[0][2]];
+  }
+  var seed=7;function rnd(){seed=(seed*16807)%2147483647;return seed/2147483647;}
+  var sh="";
+  for(var i=0;i<34;i++){sh+='<circle cx="'+(130+rnd()*420).toFixed(1)+'" cy="'+(36+rnd()*150).toFixed(1)+'" r="'+(.8+rnd()*1.2).toFixed(1)+'" fill="#fff" style="animation-delay:'+(rnd()*3).toFixed(1)+'s"/>';}
+  $("stars").innerHTML=sh;
+  var CD=[{x0:0,y:90,sp:.25,sc:1.1},{x0:200,y:150,sp:.15,sc:.8},{x0:340,y:62,sp:.1,sc:.9}],ch="";
+  CD.forEach(function(){ch+='<g class="cd"><ellipse rx="34" ry="12"/><ellipse cx="-18" cy="-8" rx="18" ry="12"/><ellipse cx="14" cy="-10" rx="22" ry="14"/></g>';});
+  $("clouds").innerHTML=ch;
+  var cds=document.querySelectorAll(".cd"),tick=0;
+
+  var T=12,liveMode=true;
+  function fmt(h){var m=Math.round(h*60)%1440,hh=Math.floor(m/60),mm=m%60,ap=hh>=12?"PM":"AM",h12=hh%12||12;return h12+":"+(mm<10?"0":"")+mm+" "+ap;}
+  function renderScene(){
+    var h=T,sk=skyAt(h);
+    $("s0").setAttribute("stop-color",css(sk[0]));$("s1").setAttribute("stop-color",css(sk[1]));
+    var e=Math.sin(Math.PI*(h-6)/12),L=cl((e+.2)/.6,0,1);
+    var w=cl(Math.exp(-Math.pow(h-6.3,2))+Math.exp(-Math.pow(h-18.4,2)),0,1);
+    var a=Math.PI*(h-6)/12,sunVis=h>5.4&&h<18.6;
+    $("sun").setAttribute("display",sunVis?"inline":"none");$("halo").setAttribute("display",sunVis?"inline":"none");
+    var sx=340-Math.cos(a)*180,sy=262-Math.sin(a)*200;
+    $("sun").setAttribute("cx",sx);$("sun").setAttribute("cy",sy);$("halo").setAttribute("cx",sx);$("halo").setAttribute("cy",sy);
+    $("sun").setAttribute("fill",css(mx(hex("#ff9f45"),hex("#ffe27a"),cl(e*2,0,1))));
+    var m=((h-18)+24)%24,ma=Math.PI*m/12;
+    $("moon").setAttribute("display",m<=12?"inline":"none");
+    $("moon").setAttribute("transform","translate("+(340-Math.cos(ma)*180)+" "+(262-Math.sin(ma)*200)+")");
+    $("stars").setAttribute("opacity",cl(1-L*1.6,0,1));
+    var cc=mx(mx(hex("#3b4668"),hex("#ffffff"),L),hex("#ffc9a0"),w*.5);
+    cds.forEach(function(c){c.setAttribute("fill",css(cc));});
+    $("hf").setAttribute("fill",css(mx(mx(hex("#1b2750"),hex("#7fae85"),L),hex("#a4627a"),w*.25)));
+    $("hn").setAttribute("fill",css(mx(mx(hex("#121c38"),hex("#5f9a6a"),L),hex("#7a4a62"),w*.25)));
+    $("wall").setAttribute("fill",css(mx([44,50,72],[236,228,213],L)));
+    $("ovn").setAttribute("opacity",(.38*(1-L)).toFixed(2));
+    $("ovs").setAttribute("opacity",(.14*w).toFixed(2));
+    var lamp=cl(1.2-L*1.6,0,1);
+    $("glow").setAttribute("opacity",(.7*lamp).toFixed(2));
+    $("shade").setAttribute("fill",css(mx(hex("#c9a35a"),hex("#ffd77a"),lamp)));
+    $("steam").setAttribute("opacity",h>5.5&&h<11.5?1:0);
+    $("tl").textContent=fmt(h);$("tm").value=h;
+  }
+  function nowHours(){var n=new Date();return n.getHours()+n.getMinutes()/60;}
+  function goLive(){liveMode=true;T=nowHours();$("live").setAttribute("aria-pressed","true");renderScene();}
+  $("live").onclick=goLive;
+  $("tm").oninput=function(){liveMode=false;T=parseFloat(this.value);$("live").setAttribute("aria-pressed","false");renderScene();};
+  setInterval(function(){if(liveMode){T=nowHours();renderScene();}},20000);
+  setInterval(function(){
+    tick++;
+    cds.forEach(function(c,i){var d=CD[i];c.setAttribute("transform","translate("+(80+((d.x0+tick*d.sp)%520))+" "+d.y+") scale("+d.sc+")");});
+  },60);
+
+  /* ---------- Speaking ---------- */
+  var talkTimer=null,idleTimer=null,synth=window.speechSynthesis,seq=0;
+  setInterval(function(){if(cur==="idle"&&Date.now()-lastActive>45000)setState("sleepy");},5000);
+  function wake(){
+    lastActive=Date.now();
+    if(cur!=="sleepy")return;
+    setState("excited");idleTimer=setTimeout(function(){setState("idle");},1400);
+  }
+  document.addEventListener("pointerdown",wake,true);
+  document.addEventListener("keydown",wake,true);
+  function stopAll(){
+    seq++;clearInterval(talkTimer);clearTimeout(idleTimer);
+    if(synth)synth.cancel();
+    if(rec){try{rec.abort();}catch(e){}}
+  }
+  function said(t){$("said").textContent=t;}
+  function speak(text,then,mood){
+    var t=seq;
+    said(text);setState("talking");
+    if(mood){curV=Object.assign({},BASE,STATES[mood].v);V=Object.assign({},curV);render();}
+    clearInterval(talkTimer);
+    talkTimer=setInterval(function(){
+      apply({bob:(Math.random()*-7).toFixed(1),s:(1+Math.random()*.08).toFixed(2),px:(Math.random()-.5)*.8,py:(Math.random()-.5)*.8});
+    },150);
+    function done(){
+      if(t!==seq)return;
+      clearInterval(talkTimer);apply({bob:0});
+      if(then){then();return;}
+      setState("happy");idleTimer=setTimeout(function(){setState("idle");},1600);
+    }
+    if(synth&&window.SpeechSynthesisUtterance){
+      var u=new SpeechSynthesisUtterance(text);u.rate=1.02;u.pitch=1.25;
+      u.onend=done;u.onerror=done;synth.speak(u);
+    }else{idleTimer=setTimeout(done,Math.max(1500,text.length*55));}
+  }
+
+  /* brain: swap this function for a call to your own backend */
+  function reply(q){
+    var s=q.toLowerCase();
+    if(/\b(hi|hello|hey)\b/.test(s))return "Hello! I’m Pip. What are we working on today?";
+    if(s.indexOf("time")>-1)return "It’s "+new Date().toLocaleTimeString([],{hour:"numeric",minute:"2-digit"})+".";
+    if(s.indexOf("date")>-1||s.indexOf("day")>-1)return "Today is "+new Date().toLocaleDateString([],{weekday:"long",month:"long",day:"numeric"})+".";
+    if(s.indexOf("thank")>-1)return "Anytime!";
+    return null;
+  }
+  var BSTEPS=[
+    ["Good morning! Here’s your sample briefing.","excited"],
+    ["You have three meetings today. The first is at ten.",null],
+    ["Twelve unread emails, and two look urgent.","unsure"],
+    ["Your top task is the quarterly report. You’ve got this!","happy"]
+  ];
+  function runBrief(){
+    stopAll();
+    var i=0;
+    (function next(){
+      var st=BSTEPS[i++];
+      speak(st[0],i<BSTEPS.length?next:null,st[1]);
+    })();
+  }
+
+  function handle(q){
+    q=q.trim();if(!q)return;
+    stopAll();said("“"+q+"”");setState("thinking");
+    idleTimer=setTimeout(function(){
+      if(/brief/i.test(q)){runBrief();return;}
+      var r=reply(q);
+      if(r){speak(r);}
+      else{
+        setState("unsure");said("I don’t know that one yet. Connect me to a backend to answer anything.");
+        idleTimer=setTimeout(function(){setState("idle");},2800);
+      }
+    },900);
+  }
+
+  /* voice input */
+  var SR=window.SpeechRecognition||window.webkitSpeechRecognition,rec=null;
+  $("mic").onclick=function(){
+    if(!SR){said("Voice input isn’t available in this browser. Type instead.");setState("unsure");return;}
+    stopAll();
+    rec=new SR();rec.lang="en-US";rec.interimResults=false;
+    var got=false;
+    rec.onstart=function(){setState("listening");said("I’m listening…");};
+    rec.onresult=function(e){got=true;handle(e.results[0][0].transcript);};
+    rec.onerror=function(e){got=true;setState("unsure");said("Mic problem ("+e.error+"). You can type instead.");};
+    rec.onend=function(){if(!got&&cur==="listening"){setState("idle");said("Didn’t catch that.");}};
+    try{rec.start();}catch(e){setState("unsure");said("Couldn’t start the mic. Type instead.");}
+  };
+  $("brief").onclick=runBrief;
+  var txt=$("txt");
+  function send(){var v=txt.value;txt.value="";handle(v);}
+  $("send").onclick=send;
+  txt.onkeydown=function(e){if(e.key==="Enter")send();};
+
+  goLive();
+  setState("idle");
+})();
+</script>
+</body>
+</html>

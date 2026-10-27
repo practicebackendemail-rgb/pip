@@ -1,0 +1,1 @@
+{"status": "ollama_offline", "distilled": "lib/widgets/companion/pip_stage_header.dart:18:class PipStageHeader extends StatelessWidget {\nlib/widgets/companion/pip_stage_header.dart:24:  const PipStageHeader({", "files_touched": ["lib/widgets/companion/pip_stage_header.dart:18", "lib/widgets/companion/pip_stage_header.dart:24"]}

@@ -1,0 +1,1 @@
+{"status": "ollama_offline", "distilled": "lib/screens/settings_persona_screen.dart:251:                    await email.saveAndTestConfig(\nlib/screens/onboarding_setup_screen.dart:137:      await email.saveAndTestConfig(", "files_touched": ["lib/screens/settings_persona_screen.dart:251", "lib/screens/onboarding_setup_screen.dart:137"]}

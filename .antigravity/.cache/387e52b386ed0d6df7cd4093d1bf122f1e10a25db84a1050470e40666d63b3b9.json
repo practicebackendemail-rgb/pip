@@ -1,0 +1,1 @@
+{"status": "ollama_offline", "distilled": "lib/features/companion/presentation/cubit/pip_stage_cubit.dart:119:  Future<void> handleQuery(String query) async {", "files_touched": ["lib/features/companion/presentation/cubit/pip_stage_cubit.dart:119"]}
