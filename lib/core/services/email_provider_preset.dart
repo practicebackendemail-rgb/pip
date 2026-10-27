@@ -1,61 +1,66 @@
 /// Provider preset configuration for IMAP and SMTP settings
 class EmailProviderPreset {
-  final String domain;
+  final String id;
+  final String label;
+  final List<String> domains;
   final String imapServer;
   final int imapPort;
   final String smtpServer;
   final int smtpPort;
-  final bool isSecure;
+
+  /// Where the user creates the app password most of these providers require.
+  final String? appPasswordHelp;
 
   const EmailProviderPreset({
-    required this.domain,
+    required this.id,
+    required this.label,
+    required this.domains,
     required this.imapServer,
     this.imapPort = 993,
     required this.smtpServer,
     this.smtpPort = 465,
-    this.isSecure = true,
+    this.appPasswordHelp,
   });
+
+  /// Kept for older callers: the first domain this preset matches.
+  String get domain => domains.first;
 
   static const List<EmailProviderPreset> presets = [
     EmailProviderPreset(
-      domain: 'gmail.com',
+      id: 'gmail',
+      label: 'Gmail',
+      domains: ['gmail.com', 'googlemail.com'],
       imapServer: 'imap.gmail.com',
-      imapPort: 993,
       smtpServer: 'smtp.gmail.com',
       smtpPort: 465,
-      isSecure: true,
+      appPasswordHelp: 'Google Account → Security → App passwords',
     ),
     EmailProviderPreset(
-      domain: 'outlook.com',
+      id: 'outlook',
+      label: 'Outlook',
+      domains: ['outlook.com', 'hotmail.com', 'live.com', 'msn.com'],
       imapServer: 'outlook.office365.com',
-      imapPort: 993,
       smtpServer: 'smtp-mail.outlook.com',
       smtpPort: 587,
-      isSecure: false,
+      appPasswordHelp: 'Microsoft account → Security → App passwords',
     ),
     EmailProviderPreset(
-      domain: 'hotmail.com',
-      imapServer: 'outlook.office365.com',
-      imapPort: 993,
-      smtpServer: 'smtp-mail.outlook.com',
-      smtpPort: 587,
-      isSecure: false,
-    ),
-    EmailProviderPreset(
-      domain: 'yahoo.com',
+      id: 'yahoo',
+      label: 'Yahoo',
+      domains: ['yahoo.com', 'ymail.com'],
       imapServer: 'imap.mail.yahoo.com',
-      imapPort: 993,
       smtpServer: 'smtp.mail.yahoo.com',
       smtpPort: 465,
-      isSecure: true,
+      appPasswordHelp: 'Yahoo Account security → Generate app password',
     ),
     EmailProviderPreset(
-      domain: 'icloud.com',
+      id: 'icloud',
+      label: 'iCloud',
+      domains: ['icloud.com', 'me.com', 'mac.com'],
       imapServer: 'imap.mail.me.com',
-      imapPort: 993,
       smtpServer: 'smtp.mail.me.com',
       smtpPort: 587,
-      isSecure: false,
+      appPasswordHelp: 'appleid.apple.com → Sign-In and Security → App-specific passwords',
     ),
   ];
 
@@ -64,8 +69,19 @@ class EmailProviderPreset {
     if (parts.length != 2) return null;
     final domain = parts[1].toLowerCase().trim();
     for (final preset in presets) {
-      if (preset.domain == domain) return preset;
+      if (preset.domains.contains(domain)) return preset;
+    }
+    return null;
+  }
+
+  static EmailProviderPreset? byId(String id) {
+    for (final preset in presets) {
+      if (preset.id == id) return preset;
     }
     return null;
   }
 }
+
+/// TLS mode follows the port: 993 (IMAP) and 465 (SMTP) use implicit TLS,
+/// other ports (143, 587, 25) start plain and must upgrade with STARTTLS.
+bool usesImplicitTls(int port) => port == 993 || port == 465;

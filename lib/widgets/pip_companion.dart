@@ -3,8 +3,10 @@ import 'dart:io';
 import 'dart:math' as math;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:window_manager/window_manager.dart';
 import '../core/services/pip_desktop_window_manager.dart';
+import 'pip_emote_painter.dart';
 import 'pip_params.dart';
 import 'pip_vector_painter.dart';
 
@@ -226,11 +228,17 @@ class _PipDeskCompanionState extends State<PipDeskCompanion> with SingleTickerPr
 
   @override
   Widget build(BuildContext context) {
+    final reduceMotion = MediaQuery.maybeDisableAnimationsOf(context) ?? false;
+    final elapsed = _animController.lastElapsedDuration;
+    final time = reduceMotion || elapsed == null ? 0.0 : elapsed.inMicroseconds / 1e6;
     Widget content = SizedBox(
       width: widget.width,
       height: widget.height,
       child: CustomPaint(
+        foregroundPainter: PipEmotePainter(emote: emoteFor(widget.mood), time: time),
         painter: PipVectorPainter(
+          time: time,
+          talking: widget.mood == PipMood.talking && !reduceMotion,
           lid: _current.lid,
           low: _current.low,
           tilt: _current.tilt,
@@ -259,9 +267,18 @@ class _PipDeskCompanionState extends State<PipDeskCompanion> with SingleTickerPr
         ),
       );
     } else {
-      content = GestureDetector(
-        onTap: widget.onTap,
-        child: content,
+      content = Semantics(
+        label: 'Pip, ${widget.mood.name}',
+        button: widget.onTap != null,
+        child: GestureDetector(
+          onTap: widget.onTap == null
+              ? null
+              : () {
+                  HapticFeedback.lightImpact();
+                  widget.onTap!();
+                },
+          child: content,
+        ),
       );
     }
 

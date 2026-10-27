@@ -91,7 +91,7 @@ class EmailService extends ChangeNotifier {
         imapPort: port,
         smtpServer: smtpHost ?? preset?.smtpServer ?? server.replaceFirst('imap.', 'smtp.'),
         smtpPort: smtpP ?? preset?.smtpPort ?? 465,
-        isSecure: preset?.isSecure ?? true,
+        isSecure: usesImplicitTls(smtpP ?? preset?.smtpPort ?? 465),
         username: user,
         password: pass,
       );
@@ -116,10 +116,11 @@ class EmailService extends ChangeNotifier {
       final preset = EmailProviderPreset.findForEmail(user);
       final derivedSmtpServer = smtpServer ?? preset?.smtpServer ?? server.replaceFirst('imap.', 'smtp.');
       final derivedSmtpPort = smtpPort ?? preset?.smtpPort ?? 465;
-      final derivedIsSecure = preset?.isSecure ?? isSecure;
+      final derivedIsSecure = usesImplicitTls(derivedSmtpPort);
 
       final client = ImapClient(isLogEnabled: false);
-      await client.connectToServer(server, port, isSecure: derivedIsSecure);
+      await client.connectToServer(server, port, isSecure: usesImplicitTls(port));
+      if (!usesImplicitTls(port)) await client.startTls();
       await client.login(user, pass);
       await client.selectInbox();
 
@@ -183,14 +184,20 @@ class EmailService extends ChangeNotifier {
 
     final client = SmtpClient('pip.desktop.client', isLogEnabled: false);
     try {
+      final implicitTls = usesImplicitTls(_config!.smtpPort);
       await client.connectToServer(
         _config!.smtpServer,
         _config!.smtpPort,
-        isSecure: _config!.isSecure,
+        isSecure: implicitTls,
       );
       await client.ehlo();
 
-      if (!_config!.isSecure && client.serverInfo.supportsStartTls) {
+      if (!implicitTls) {
+        // Never send credentials over a plain connection.
+        if (!client.serverInfo.supportsStartTls) {
+          await client.quit();
+          return {'error': 'Your mail server does not offer encryption (STARTTLS), so Pip will not send.'};
+        }
         await client.startTls();
         await client.ehlo();
       }
@@ -248,8 +255,9 @@ class EmailService extends ChangeNotifier {
       await client.connectToServer(
         _config!.imapServer,
         _config!.imapPort,
-        isSecure: _config!.isSecure,
+        isSecure: usesImplicitTls(_config!.imapPort),
       );
+      if (!usesImplicitTls(_config!.imapPort)) await client.startTls();
       await client.login(_config!.username, _config!.password);
       await client.selectInbox();
 

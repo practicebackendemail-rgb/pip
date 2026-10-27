@@ -11,7 +11,8 @@ import '../../core/services/pip_overlay_manager.dart';
 import '../../core/services/pip_sfx_service.dart';
 import '../../core/theme/apple_theme.dart';
 import '../../core/theme/app_motion_tokens.dart';
-import '../../screens/settings_persona_screen.dart';
+import '../../core/theme/pip_theme.dart';
+import '../../screens/settings/pip_settings_screen.dart';
 import '../../screens/what_pip_knows_screen.dart';
 import '../chat_transcript_sheet.dart';
 
@@ -22,12 +23,16 @@ class PipStageHeader extends StatelessWidget {
   final List<Map<String, dynamic>> messages;
   final PipAudioCoordinator audioCoordinator;
 
+  /// False on wide layouts, where the navigation rail already offers these.
+  final bool showNavActions;
+
   const PipStageHeader({
     super.key,
     required this.hasActiveOverlay,
     required this.onDismissOverlay,
     required this.messages,
     required this.audioCoordinator,
+    this.showNavActions = true,
   });
 
   @override
@@ -156,25 +161,24 @@ class PipStageHeader extends StatelessWidget {
                         await PipOverlayManager.showOverlay();
                       },
                     ),
-                  IconButton(
-                    icon: const Icon(Icons.psychology_outlined, color: Colors.white, size: 22),
-                    tooltip: "What Pip Knows About Me",
-                    onPressed: () {
-                      PipSfxService.blip();
-                      final repo = getIt<MemoryRepository>();
-                      WhatPipKnowsScreen.show(context, repo);
-                    },
-                  ),
-                  IconButton(
-                    icon: const Icon(CupertinoIcons.slider_horizontal_3, color: Colors.white, size: 20),
-                    onPressed: () {
-                      PipSfxService.blip();
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (_) => const SettingsPersonaScreen()),
-                      );
-                    },
-                  ),
+                  if (showNavActions) ...[
+                    IconButton(
+                      icon: const Icon(Icons.psychology_outlined, color: PipColors.ink, size: 22),
+                      tooltip: "What Pip knows",
+                      onPressed: () {
+                        PipSfxService.blip();
+                        WhatPipKnowsScreen.show(context, getIt<MemoryRepository>());
+                      },
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.settings_outlined, color: PipColors.ink, size: 21),
+                      tooltip: "Settings",
+                      onPressed: () {
+                        PipSfxService.blip();
+                        PipSettingsScreen.open(context);
+                      },
+                    ),
+                  ],
                 ],
               ),
             ),

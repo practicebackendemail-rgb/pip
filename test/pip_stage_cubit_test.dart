@@ -10,6 +10,7 @@ import 'package:personal_assistant/core/services/pip_tool_registry.dart';
 import 'package:personal_assistant/core/services/task_provider.dart';
 import 'package:personal_assistant/features/companion/presentation/cubit/pip_stage_cubit.dart';
 import 'package:personal_assistant/models/task_model.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class StubLlmProvider implements LlmProvider {
   final String replyText;
@@ -102,6 +103,7 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   test('PipStageCubit plain-text query completes with isLoading == false', () async {
+    SharedPreferences.setMockInitialValues({});
     const rawReply = '{"text": "Bazinga! That is logically indisputable.", "emotion": "happy"}';
     final stubLlm = StubLlmProvider(rawReply);
     final stubRegistry = StubLlmRegistryService(stubLlm);

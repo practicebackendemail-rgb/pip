@@ -8,6 +8,7 @@ import '../../../../core/domain/pip_emotion_state.dart';
 import '../../../../core/services/email_service.dart';
 import '../../../../core/services/llm_registry_service.dart';
 import '../../../../core/services/pip_home_widget_service.dart';
+import '../../../../core/services/pip_profile_service.dart';
 import '../../../../core/services/pip_sfx_service.dart';
 import '../../../../core/services/pip_tool_registry.dart';
 import '../../../../core/services/task_provider.dart';
@@ -153,7 +154,7 @@ class PipStageCubit extends Cubit<PipStageState> {
 
       final systemContext = PipCharacterBible.buildSystemPrompt(
         emotionContext: emotionState.toPromptContext(),
-        humorLevel: 0.6,
+        humorLevel: await PipProfileService.humor(),
         activeRules: activeRules.map((r) => r.instruction).toList(),
         relevantMemories: memories.map((m) => m.text).toList(),
         toolsContext: toolRegistry.buildToolsPromptContext(),

@@ -15,7 +15,15 @@ class PipVectorPainter extends CustomPainter {
   final double armRightAngle;
   final Color ledColor;
 
+  /// Seconds since the companion started; drives the chest waveform.
+  final double time;
+
+  /// When true the chest screen shows a moving voice waveform.
+  final bool talking;
+
   const PipVectorPainter({
+    this.time = 0,
+    this.talking = false,
     this.lid = 0,
     this.low = 0,
     this.tilt = 14,
@@ -55,6 +63,7 @@ class PipVectorPainter extends CustomPainter {
     const colorLid = Color(0xFFC0821F);
     const colorEyeHousing = Color(0xFF1F2A2E);
     const colorPupil = Color(0xFF05080A);
+    const colorSheen = Color(0xFFF3C95A);
 
     final rustStroke = Paint()
       ..color = colorRust
@@ -77,6 +86,18 @@ class PipVectorPainter extends CustomPainter {
       for (double y = 150; y < 225; y += 10) {
         canvas.drawLine(Offset(x + 7, y), Offset(x + 45, y), ribPaint);
       }
+      // Wheel hubs peeking through the tread
+      for (final hy in [158.0, 214.0]) {
+        canvas.drawCircle(Offset(x + 26, hy), 8, Paint()..color = const Color(0xFF3A3F43));
+        canvas.drawCircle(
+            Offset(x + 26, hy),
+            8,
+            Paint()
+              ..color = colorTrackRib
+              ..style = PaintingStyle.stroke
+              ..strokeWidth = 2.5);
+        canvas.drawCircle(Offset(x + 26, hy), 2.5, Paint()..color = colorTrackRib);
+      }
     }
     drawTrack(36);
     drawTrack(232);
@@ -93,9 +114,15 @@ class PipVectorPainter extends CustomPainter {
       canvas.drawRRect(shoulder, Paint()..color = const Color(0xFF8A4A1C));
       canvas.drawRRect(shoulder, darkRustStroke);
 
-      final hand = RRect.fromRectAndRadius(Rect.fromLTWH(x + 4, 176, 30, 22), const Radius.circular(6));
-      canvas.drawRRect(hand, Paint()..color = colorRust);
-      canvas.drawRRect(hand, darkRustStroke);
+      // Two-finger gripper
+      for (final fx in [x + 4, x + 22]) {
+        final finger = RRect.fromRectAndRadius(Rect.fromLTWH(fx, 184, 12, 14), const Radius.circular(4));
+        canvas.drawRRect(finger, Paint()..color = colorRust);
+        canvas.drawRRect(finger, darkRustStroke);
+      }
+      final wrist = RRect.fromRectAndRadius(Rect.fromLTWH(x + 4, 176, 30, 12), const Radius.circular(5));
+      canvas.drawRRect(wrist, Paint()..color = colorRust);
+      canvas.drawRRect(wrist, darkRustStroke);
       canvas.restore();
     }
     drawArm(56, armLeftAngle, true);
@@ -105,6 +132,11 @@ class PipVectorPainter extends CustomPainter {
     final torsoRect = RRect.fromRectAndRadius(const Rect.fromLTWH(98, 154, 124, 82), const Radius.circular(10));
     canvas.drawRRect(torsoRect, Paint()..color = colorGold);
     canvas.drawRRect(torsoRect, rustStroke);
+    // Top-edge sheen on the amber body
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(const Rect.fromLTWH(106, 160, 108, 4), const Radius.circular(2)),
+      Paint()..color = colorSheen,
+    );
 
     // Three vertical torso vent slats
     final slatPaint = Paint()..color = colorRust;
@@ -143,9 +175,17 @@ class PipVectorPainter extends CustomPainter {
     final console = RRect.fromRectAndRadius(const Rect.fromLTWH(168, 130, 34, 20), const Radius.circular(3));
     canvas.drawRRect(console, Paint()..color = colorConsole);
     canvas.drawCircle(const Offset(178, 140), 4, Paint()..color = ledColor);
-    final amberLed = Paint()..color = colorAmberLed;
-    canvas.drawRect(const Rect.fromLTWH(187, 136, 9, 2.5), amberLed);
-    canvas.drawRect(const Rect.fromLTWH(187, 142, 9, 2.5), amberLed);
+    // Voice waveform: dances while talking, rests as short bars otherwise
+    final amberLed = Paint()
+      ..color = colorAmberLed
+      ..strokeWidth = 2
+      ..strokeCap = StrokeCap.round;
+    for (var i = 0; i < 4; i++) {
+      final level = talking ? 0.35 + 0.65 * (0.5 + 0.5 * math.sin(time * 14 + i * 1.7)).abs() : 0.25;
+      final h = 12 * level;
+      final x = 186.0 + i * 3.6;
+      canvas.drawLine(Offset(x, 140 - h / 2), Offset(x, 140 + h / 2), amberLed);
+    }
 
     // 5. Neck & Rotating Head
     canvas.save();
@@ -193,6 +233,17 @@ class PipVectorPainter extends CustomPainter {
         ..style = PaintingStyle.stroke
         ..strokeWidth = 4.5,
     );
+    // Light catching the top of the housing
+    canvas.drawPath(
+      Path()
+        ..moveTo(-32, -38)
+        ..quadraticBezierTo(0, -47, 32, -38),
+      Paint()
+        ..color = const Color(0xFFF3C95A)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 4.5
+        ..strokeCap = StrokeCap.round,
+    );
 
     // Small metallic screw accents
     final screwPaint = Paint()..color = rust;
@@ -211,12 +262,21 @@ class PipVectorPainter extends CustomPainter {
     canvas.clipPath(clipPath);
 
     canvas.drawCircle(Offset.zero, 38, Paint()..color = const Color(0xFF151A1C));
+    // Lens ring
+    canvas.drawCircle(
+        Offset.zero,
+        30,
+        Paint()
+          ..color = const Color(0xFF24363C)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 2);
 
     // Pupil with eye gaze tracking
     canvas.save();
     canvas.translate(px * 11, py * 8);
     canvas.drawCircle(Offset.zero, 19, Paint()..color = pupil);
-    canvas.drawCircle(const Offset(-7, -8), 6, Paint()..color = Colors.white.withValues(alpha: 0.9));
+    canvas.drawCircle(const Offset(-7, -8), 6, Paint()..color = Colors.white.withValues(alpha: 0.92));
+    canvas.drawCircle(const Offset(6, 7), 2.5, Paint()..color = Colors.white.withValues(alpha: 0.55));
     canvas.restore();
 
     // Top eyelid (descends downward)
@@ -232,5 +292,18 @@ class PipVectorPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant PipVectorPainter oldDelegate) => true;
+  bool shouldRepaint(covariant PipVectorPainter old) =>
+      old.lid != lid ||
+      old.low != low ||
+      old.tilt != tilt ||
+      old.px != px ||
+      old.py != py ||
+      old.s != s ||
+      old.head != head ||
+      old.bob != bob ||
+      old.armLeftAngle != armLeftAngle ||
+      old.armRightAngle != armRightAngle ||
+      old.ledColor != ledColor ||
+      (talking && old.time != time) ||
+      old.talking != talking;
 }

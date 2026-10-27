@@ -3,7 +3,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'app/pip_app_flow.dart';
 import 'core/di/injection.dart';
 import 'core/domain/event_log.dart';
 import 'core/domain/memory_repository.dart';
@@ -16,10 +16,8 @@ import 'core/services/pip_overlay_bridge.dart';
 import 'core/services/pip_desktop_window_manager.dart';
 import 'core/services/sync/pip_cloud_sync_coordinator.dart';
 import 'core/services/task_provider.dart';
-import 'core/theme/apple_theme.dart';
+import 'core/theme/pip_theme.dart';
 import 'features/companion/presentation/cubit/pip_stage_cubit.dart';
-import 'screens/companion_stage_screen.dart';
-import 'screens/onboarding_setup_screen.dart';
 import 'widgets/companion/pip_overlay_widget.dart';
 
 // Overlay entry point required by flutter_overlay_window
@@ -39,17 +37,11 @@ void main() async {
   await configureDependencies();
   await PipDesktopWindowManager.initialize();
 
-  final prefs = await SharedPreferences.getInstance();
-  final hasCompletedOnboarding =
-      prefs.getBool('has_completed_onboarding') ?? false;
-
-  runApp(PersonalAssistantApp(showOnboarding: !hasCompletedOnboarding));
+  runApp(const PersonalAssistantApp());
 }
 
 class PersonalAssistantApp extends StatefulWidget {
-  final bool showOnboarding;
-
-  const PersonalAssistantApp({super.key, required this.showOnboarding});
+  const PersonalAssistantApp({super.key});
 
   @override
   State<PersonalAssistantApp> createState() => _PersonalAssistantAppState();
@@ -57,7 +49,6 @@ class PersonalAssistantApp extends StatefulWidget {
 
 class _PersonalAssistantAppState extends State<PersonalAssistantApp>
     with WidgetsBindingObserver {
-  late bool _onboardingActive;
   // One cubit instance shared by the widget tree and the overlay bridge, so the
   // floating overlay mirrors the same state the app shows.
   late final PipStageCubit _stageCubit;
@@ -70,7 +61,6 @@ class _PersonalAssistantAppState extends State<PersonalAssistantApp>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _onboardingActive = widget.showOnboarding;
     _stageCubit = getIt<PipStageCubit>();
     if (!kIsWeb && Platform.isAndroid) {
       _overlayBridge = PipOverlayBridge(
@@ -133,23 +123,15 @@ class _PersonalAssistantAppState extends State<PersonalAssistantApp>
     }
   }
 
-  void _finishOnboarding() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('has_completed_onboarding', true);
-    setState(() => _onboardingActive = false);
-  }
-
   @override
   Widget build(BuildContext context) {
     return BlocProvider.value(
       value: _stageCubit,
       child: MaterialApp(
-        title: 'Pip - Desk Companion',
+        title: 'Pip',
         debugShowCheckedModeBanner: false,
-        theme: AppleTheme.darkTheme,
-        home: _onboardingActive
-            ? OnboardingSetupScreen(onComplete: _finishOnboarding)
-            : const CompanionStageScreen(),
+        theme: PipTheme.dark,
+        home: const PipAppFlow(),
       ),
     );
   }

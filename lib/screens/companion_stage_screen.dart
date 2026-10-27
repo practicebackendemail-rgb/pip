@@ -3,6 +3,8 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../core/di/injection.dart';
 import '../../core/services/pip_audio_coordinator.dart';
+import '../../core/services/pip_profile_service.dart';
+import '../../core/theme/pip_theme.dart';
 import '../../core/services/task_provider.dart';
 import '../../core/theme/app_motion_tokens.dart';
 import '../../features/companion/presentation/cubit/pip_stage_cubit.dart';
@@ -19,7 +21,10 @@ import '../widgets/pip_companion.dart';
 
 /// Pure Clean Architecture stage screen powered exclusively by PipStageCubit (Zero setState).
 class CompanionStageScreen extends StatefulWidget {
-  const CompanionStageScreen({super.key});
+  /// True inside the wide (desktop) home, where the rail handles navigation.
+  final bool embedded;
+
+  const CompanionStageScreen({super.key, this.embedded = false});
 
   @override
   State<CompanionStageScreen> createState() => _CompanionStageScreenState();
@@ -28,9 +33,22 @@ class CompanionStageScreen extends StatefulWidget {
 class _CompanionStageScreenState extends State<CompanionStageScreen> {
   final TextEditingController _textController = TextEditingController();
 
+  /// Pip says something different each time it's poked, instead of one canned line.
+  static const _tapLines = [
+    "Hi! Ask me anything, or tap Briefing to catch up.",
+    "Boop! That tickles my sensors.",
+    "Still here, still shiny. What's next?",
+    "Need a hand? I have two. Well, grippers.",
+  ];
+  int _tapCount = 0;
+
   @override
   void initState() {
     super.initState();
+    PipProfileService.userName().then((name) {
+      if (!mounted || name == null) return;
+      context.read<PipStageCubit>().speak("${PipProfileService.greeting(name)} What are we tackling today?", isHappy: true);
+    });
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final audio = getIt<PipAudioCoordinator>();
       final cubit = context.read<PipStageCubit>();
@@ -64,7 +82,7 @@ class _CompanionStageScreenState extends State<CompanionStageScreen> {
             final hasSpeech = state.speechText.trim().isNotEmpty;
 
             return Scaffold(
-              backgroundColor: const Color(0xFF0D0E12),
+              backgroundColor: PipColors.background,
               body: PipStageScenery(
                 child: Stack(
                   children: [
@@ -74,6 +92,7 @@ class _CompanionStageScreenState extends State<CompanionStageScreen> {
                       onDismissOverlay: cubit.dismissOverlay,
                       messages: const [],
                       audioCoordinator: audio,
+                      showNavActions: !widget.embedded,
                     ),
                     SafeArea(
                       child: Column(
@@ -104,7 +123,7 @@ class _CompanionStageScreenState extends State<CompanionStageScreen> {
                                     if (state.isSleeping) {
                                       cubit.wakeUp();
                                     } else {
-                                      cubit.speak("Hi! I'm listening. Ask me anything, or tap Briefing to catch up!", isHappy: true);
+                                      cubit.speak(_tapLines[_tapCount++ % _tapLines.length], isHappy: true);
                                     }
                                   },
                                 ),
