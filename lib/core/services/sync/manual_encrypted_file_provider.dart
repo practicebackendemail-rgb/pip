@@ -71,9 +71,10 @@ class ManualEncryptedFileProvider implements ISyncProvider {
     final dir = await _getSyncDir();
     final file = File(p.join(dir.path, fileName));
     if (await file.exists()) {
+      // Share the encrypted file itself so it can be saved and re-imported.
       await SharePlus.instance.share(
         ShareParams(
-          text: file.readAsStringSync(),
+          files: [XFile(file.path, mimeType: 'application/octet-stream')],
           subject: 'Pip Encrypted Backup ($fileName)',
         ),
       );

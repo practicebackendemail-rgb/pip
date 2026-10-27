@@ -75,6 +75,15 @@ void main() {
       );
     });
 
+    test('Export backup refuses without a passphrase and reports why', () async {
+      FlutterSecureStorage.setMockInitialValues({});
+      SharedPreferences.setMockInitialValues({});
+      final coordinator = PipCloudSyncCoordinator(memoryRepository: FakeMemoryRepository());
+      expect(coordinator.supportsBackupFiles, isTrue);
+      expect(await coordinator.exportBackup(), isFalse);
+      expect(coordinator.lastError, contains('passphrase'));
+    });
+
     test('Two simulated devices merge with Last-Writer-Wins and honor tombstones', () async {
       final repo = FakeMemoryRepository();
       final coordinator = PipCloudSyncCoordinator(memoryRepository: repo);

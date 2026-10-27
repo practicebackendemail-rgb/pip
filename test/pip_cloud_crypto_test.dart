@@ -23,10 +23,5 @@ void main() {
       );
     });
 
-    test('generates valid 16-character split recovery code', () {
-      final code = PipCloudCryptoService.generateRecoveryCode();
-      expect(code.length, 19); // 4 chunks of 4 + 3 dashes = 19
-      expect(RegExp(r'^[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}$').hasMatch(code), isTrue);
-    });
   });
 }

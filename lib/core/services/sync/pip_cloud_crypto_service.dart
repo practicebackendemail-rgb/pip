@@ -84,16 +84,4 @@ class PipCloudCryptoService {
     );
     return utf8.decode(decryptedBytes);
   }
-
-  /// Generates a human-readable 16-character alphanumeric emergency recovery code.
-  static String generateRecoveryCode() {
-    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-    final random = Random.secure();
-    final parts = <String>[];
-    for (int i = 0; i < 4; i++) {
-      final chunk = List.generate(4, (_) => chars[random.nextInt(chars.length)]).join();
-      parts.add(chunk);
-    }
-    return parts.join('-');
-  }
 }

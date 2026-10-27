@@ -135,6 +135,32 @@ class PipCloudSyncCoordinator extends ChangeNotifier {
     }
   }
 
+  /// Whether the active provider supports manual backup files (share/import).
+  bool get supportsBackupFiles => _activeProvider is ManualEncryptedFileProvider;
+
+  /// Writes a fresh encrypted snapshot, then opens the share sheet with it.
+  /// Returns false (with [lastError] set) when no passphrase is configured.
+  Future<bool> exportBackup() async {
+    final provider = _activeProvider;
+    if (provider is! ManualEncryptedFileProvider) return false;
+    if (!await syncNow(force: true)) {
+      _lastError ??= 'Set a sync passphrase first.';
+      notifyListeners();
+      return false;
+    }
+    await provider.exportViaShareSheet('snapshot-$_deviceId.enc');
+    return true;
+  }
+
+  /// Lets the user pick a backup file and merges it immediately.
+  Future<bool> importBackup() async {
+    final provider = _activeProvider;
+    if (provider is! ManualEncryptedFileProvider) return false;
+    final path = await provider.importViaFilePicker();
+    if (path == null) return false;
+    return syncNow(force: true);
+  }
+
   /// Merges remote items using Last-Writer-Wins based on updatedAt timestamps and tombstones
   Future<void> mergeRemoteSnapshot(Map<String, dynamic> data) async {
     // 1. Merge facts with LWW

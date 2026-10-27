@@ -5,9 +5,9 @@ import '../../core/di/injection.dart';
 import '../../core/domain/memory_models.dart';
 import '../../core/domain/memory_repository.dart';
 import '../../core/services/nightly_reflection_service.dart';
-import '../../core/services/sync/pip_cloud_sync_coordinator.dart';
 import '../../core/theme/apple_theme.dart';
 import '../../widgets/glass_container.dart';
+import '../../widgets/sync/pip_sync_panel.dart';
 
 /// "What Pip Knows About Me" Transparency Screen (Section 8.5)
 /// Lets the user inspect, edit, and delete learned profile facts, episodic memories,
@@ -104,7 +104,7 @@ class _WhatPipKnowsScreenState extends State<WhatPipKnowsScreen> {
           : ListView(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
               children: [
-                _buildSyncStatusBar(),
+                PipSyncPanel(onDataChanged: _loadData),
                 const SizedBox(height: 12),
                 _buildReflectionStatusBar(),
                 const SizedBox(height: 12),
@@ -122,55 +122,6 @@ class _WhatPipKnowsScreenState extends State<WhatPipKnowsScreen> {
                 const SizedBox(height: 40),
               ],
             ),
-    );
-  }
-
-  Widget _buildSyncStatusBar() {
-    final sync = getIt<PipCloudSyncCoordinator>();
-    return ListenableBuilder(
-      listenable: sync,
-      builder: (context, _) {
-        final last = sync.lastSyncTime;
-        final timeStr = last != null
-            ? '${last.month}/${last.day} at ${last.hour.toString().padLeft(2, '0')}:${last.minute.toString().padLeft(2, '0')}'
-            : 'Never';
-
-        return Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-          decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.05),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: Colors.white12),
-          ),
-          child: Row(
-            children: [
-              const Icon(CupertinoIcons.cloud_upload, color: AppleTheme.accentTeal, size: 18),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text("Cloud Sync: Last synced $timeStr", style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppleTheme.textPrimary)),
-                    if (sync.lastError != null)
-                      Text("Error: ${sync.lastError}", style: const TextStyle(fontSize: 10, color: AppleTheme.accentRed)),
-                  ],
-                ),
-              ),
-              TextButton(
-                onPressed: sync.isSyncing
-                    ? null
-                    : () async {
-                        final success = await sync.syncNow(force: true);
-                        if (success) _loadData();
-                      },
-                child: sync.isSyncing
-                    ? const CupertinoActivityIndicator(radius: 8)
-                    : const Text("Sync Now", style: TextStyle(fontSize: 12, color: AppleTheme.accentTeal, fontWeight: FontWeight.bold)),
-              ),
-            ],
-          ),
-        );
-      },
     );
   }
 

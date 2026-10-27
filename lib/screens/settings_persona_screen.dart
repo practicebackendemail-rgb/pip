@@ -5,6 +5,7 @@ import '../core/services/email_service.dart';
 import '../core/services/gemini_service.dart';
 import '../core/theme/apple_theme.dart';
 import '../widgets/glass_container.dart';
+import '../widgets/sync/pip_device_settings_section.dart';
 
 class SettingsPersonaScreen extends StatefulWidget {
   const SettingsPersonaScreen({super.key});
@@ -155,6 +156,8 @@ class _SettingsPersonaScreenState extends State<SettingsPersonaScreen> {
           ),
 
           const SizedBox(height: 32),
+
+          const PipDeviceSettingsSection(),
 
           // 3. Email Integration for Daily Briefings
           const Row(
