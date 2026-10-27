@@ -56,7 +56,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
             : "Hi! I'm Pip. What should I call you?",
         mood: PipMood.happy,
       ),
-      const PipStepState('Pick a brain for me. Your key stays on this device.'),
+      const PipStepState('Pick a brain for me, paste its key, and tap Check key.'),
       const PipStepState('Want a backup password? It locks your backups so only you can open them.'),
       const PipStepState('What should I help with? All optional, you can connect these later.'),
     ];
@@ -102,7 +102,9 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
   @override
   Widget build(BuildContext context) {
     final state = _states[_index];
-    final message = _index == 1 && _name != null ? 'Nice to meet you, $_name! ${state.message}' : state.message;
+    // Greet by name only on the AI step's opening line, not on later reactions.
+    final opening = _index == 1 && _name != null && state.message.startsWith('Pick a brain');
+    final message = opening ? 'Nice to meet you, $_name! ${state.message}' : state.message;
     final isLast = _index == _stepCount - 1;
 
     final body = Column(
@@ -121,7 +123,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
             physics: const NeverScrollableScrollPhysics(),
             children: [
               NameStep(key: _keys[0], onState: (s) => _onStepChanged(0, s)),
-              BrainStep(key: _keys[1], onState: (s) => _onStepChanged(1, s)),
+              BrainStep(key: _keys[1], onState: (s) => _onStepChanged(1, s), onSkip: () => _go(2)),
               BackupStep(key: _keys[2], onState: (s) => _onStepChanged(2, s)),
               ConnectionsStep(key: _keys[3], onState: (s) => _onStepChanged(3, s)),
             ],

@@ -203,8 +203,8 @@ void main() {
 
       expect(result['status'], equals('scheduled'));
       expect(result['title'], equals('Laundry Night: Wednesday 8:15 PM'));
-      expect(result['trigger_in_seconds'], equals(120));
-      expect(result['scheduled_time'], isNotNull);
+      final at = DateTime.parse(result['scheduled_time'] as String);
+      expect(at.difference(DateTime.now()).inSeconds, inInclusiveRange(110, 121));
       expect(result['persistence'], isNotNull);
     });
   });

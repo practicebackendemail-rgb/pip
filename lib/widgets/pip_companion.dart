@@ -18,12 +18,17 @@ class PipDeskCompanion extends StatefulWidget {
   final double height;
   final VoidCallback? onTap;
 
+  /// Where Pip looks, -1 (left) … 1 (right). Overrides the idle glances
+  /// when set, so a parent can make Pip watch something (a bird, a target).
+  final double? gaze;
+
   const PipDeskCompanion({
     super.key,
     this.mood = PipMood.idle,
     this.width = 310,
     this.height = 230,
     this.onTap,
+    this.gaze,
   });
 
   @override
@@ -66,7 +71,7 @@ class _PipDeskCompanionState extends State<PipDeskCompanion> with SingleTickerPr
         lid: _lerp(_current.lid, _target.lid, 0.22),
         low: _lerp(_current.low, _target.low, 0.22),
         tilt: _lerp(_current.tilt, _target.tilt, 0.18),
-        px: _lerp(_current.px, _target.px, 0.20),
+        px: _lerp(_current.px, widget.gaze ?? _target.px, 0.20),
         py: _lerp(_current.py, _target.py, 0.20),
         s: _lerp(_current.s, _target.s, 0.18),
         head: _lerp(_current.head, _target.head, 0.16),

@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import '../core/di/injection.dart';
 import '../core/services/sync/pip_cloud_sync_coordinator.dart';
 import '../core/theme/pip_theme.dart';
-import '../widgets/companion/pip_stage_scenery.dart';
 import '../widgets/pip_companion.dart';
+import '../widgets/pocket_world/pip_pocket_world.dart';
 
 /// First-run landing: Pip waves from the desk, three promises, two ways in.
 class PipWelcomeScreen extends StatefulWidget {
@@ -19,7 +19,7 @@ class PipWelcomeScreen extends StatefulWidget {
 }
 
 class _PipWelcomeScreenState extends State<PipWelcomeScreen> {
-  PipMood _mood = PipMood.happy;
+  PipMood _mood = PipMood.idle;
   bool _restoring = false;
 
   Future<void> _restore() async {
@@ -50,11 +50,23 @@ class _PipWelcomeScreenState extends State<PipWelcomeScreen> {
 
     final scene = ClipRRect(
       borderRadius: BorderRadius.circular(wide ? PipSpace.radiusLg : 0),
-      child: PipStageScenery(
+      child: PipPocketSky(
         child: Center(
           child: Padding(
-            padding: const EdgeInsets.only(top: 40),
-            child: PipDeskCompanion(mood: _mood, width: 220, height: 170, onTap: () => setState(() => _mood = PipMood.excited)),
+            padding: const EdgeInsets.all(PipSpace.lg),
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: PipPocketIsland(
+                mood: _mood,
+                maxWidth: 360,
+                onTap: () {
+                  setState(() => _mood = PipMood.excited);
+                  Future.delayed(const Duration(milliseconds: 1500), () {
+                    if (mounted && !_restoring) setState(() => _mood = PipMood.idle);
+                  });
+                },
+              ),
+            ),
           ),
         ),
       ),

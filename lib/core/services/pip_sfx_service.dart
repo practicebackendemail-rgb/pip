@@ -1,69 +1,112 @@
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/foundation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
-/// Cross-platform robotic sound effects for Pip adhering to the Ben Burtt WALL-E formula.
-/// Blends tactile mechanical foley with warm analog pitch-modulated sweeps and servo textures.
+enum PipSound { chirp, happy, thinking, blip, sleep }
+
+/// Pip's little robot sounds.
+///
+/// Each sound has its own player, loaded once and replayed from the start,
+/// so a sound never waits on a file load (the old single player swapped
+/// files and, in low-latency mode, often played nothing). Sounds mix with
+/// speech instead of taking audio focus, and idle sounds are softer and
+/// stay quiet at night.
 class PipSfxService {
   PipSfxService._();
 
-  static AudioPlayer? _playerInstance;
-  static bool _initAttempted = false;
   static bool enableAudio = true;
 
-  static AudioPlayer? get _player {
-    if (!enableAudio) return null;
-    if (!_initAttempted) {
-      _initAttempted = true;
-      try {
-        _playerInstance = AudioPlayer()
-          ..setReleaseMode(ReleaseMode.stop)
-          ..setPlayerMode(PlayerMode.lowLatency);
-      } catch (e) {
-        debugPrint("PipSfxService player init error (non-fatal): $e");
-      }
-    }
-    return _playerInstance;
-  }
+  /// Sounds for Pip's own idle acts (hops, waves, naps). Off at night anyway.
+  static bool idleSounds = true;
 
-  static Future<void> _playAsset(String path) async {
-    if (!enableAudio) return;
+  static const Map<PipSound, String> _files = {
+    PipSound.chirp: 'audio/pip_chirp.wav',
+    PipSound.happy: 'audio/pip_happy.wav',
+    PipSound.thinking: 'audio/pip_thinking.wav',
+    PipSound.blip: 'audio/pip_blip.wav',
+    PipSound.sleep: 'audio/pip_sleep.wav',
+  };
+
+  static final Map<PipSound, AudioPlayer> _players = {};
+  static Future<void>? _loading;
+
+  /// Loads every sound once. Safe to call repeatedly; play calls await it.
+  static Future<void> preload() => _loading ??= _load();
+
+  static Future<void> _load() async {
     try {
-      final p = _player;
-      if (p == null) return;
-      await p.stop();
-      await p.play(AssetSource(path), volume: 1.0);
+      final context = AudioContextConfig(focus: AudioContextConfigFocus.mixWithOthers).build();
+      for (final entry in _files.entries) {
+        final player = AudioPlayer(playerId: 'pip_${entry.key.name}');
+        await player.setAudioContext(context);
+        await player.setReleaseMode(ReleaseMode.stop);
+        await player.setSource(AssetSource(entry.value));
+        _players[entry.key] = player;
+      }
     } catch (e) {
-      debugPrint("PipSfxService play error ($path): $e");
+      debugPrint('PipSfxService preload error (non-fatal): $e');
     }
   }
 
-  /// WALL-E inquisitive ascending frequency glissando with harmonic resonance
-  static Future<void> chirp() async {
-    if (!enableAudio) return;
-    await _playAsset('audio/pip_chirp.wav');
+  /// Last playback failure, shown by the Settings "Test sound" button.
+  static String? lastError;
+
+  /// Plays [sound]. Returns true if playback started. Uses the preloaded
+  /// player, and if that fails, retries once with a fresh player (the plain,
+  /// most compatible path) so one broken player never silences Pip.
+  static Future<bool> play(PipSound sound, {double volume = 1.0}) async {
+    if (!enableAudio) return false;
+    try {
+      await preload();
+      final player = _players[sound];
+      if (player == null) throw StateError('player not loaded');
+      await player.stop();
+      await player.setVolume(volume);
+      await player.resume();
+      lastError = null;
+      return true;
+    } catch (e) {
+      debugPrint('PipSfxService preloaded play failed (${sound.name}): $e; retrying with a fresh player');
+    }
+    try {
+      final fresh = AudioPlayer();
+      await fresh.setReleaseMode(ReleaseMode.release);
+      await fresh.play(AssetSource(_files[sound]!), volume: volume);
+      lastError = null;
+      return true;
+    } catch (e) {
+      lastError = '$e';
+      debugPrint('PipSfxService play error (${sound.name}): $e');
+      return false;
+    }
   }
 
-  /// Cheerful ascending tri-tone melodic warble with micro-servo vibrato
-  static Future<void> happy() async {
-    if (!enableAudio) return;
-    await _playAsset('audio/pip_happy.wav');
+  /// Whether an idle (unprompted) sound may play at [hour].
+  static bool idleSoundAllowed(int hour) => enableAudio && idleSounds && hour >= 7 && hour < 22;
+
+  /// Softer sound for something Pip does on its own.
+  static Future<void> idle(PipSound sound) async {
+    if (!idleSoundAllowed(DateTime.now().hour)) return;
+    await play(sound, volume: .45);
   }
 
-  /// Inquisitive two-tone ring-modulated pitch oscillation
-  static Future<void> thinking() async {
-    if (!enableAudio) return;
-    await _playAsset('audio/pip_thinking.wav');
+  static Future<void> chirp() => play(PipSound.chirp);
+  static Future<void> happy() => play(PipSound.happy);
+  static Future<void> thinking() => play(PipSound.thinking);
+  static Future<void> blip() => play(PipSound.blip);
+  static Future<void> sleep() => play(PipSound.sleep);
+
+  static const String _enabledKey = 'pip_sfx_enabled';
+
+  /// Restores the user's sound-effects setting (on by default).
+  static Future<void> loadSetting() async {
+    final prefs = await SharedPreferences.getInstance();
+    enableAudio = prefs.getBool(_enabledKey) ?? true;
   }
 
-  /// Camera shutter & solenoid tactile contact click
-  static Future<void> blip() async {
-    if (!enableAudio) return;
-    await _playAsset('audio/pip_blip.wav');
-  }
-
-  /// Soft mechanical power-down descent for sleep mode
-  static Future<void> sleep() async {
-    if (!enableAudio) return;
-    await _playAsset('audio/pip_sleep.wav');
+  static Future<void> setEnabled(bool enabled) async {
+    enableAudio = enabled;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_enabledKey, enabled);
   }
 }

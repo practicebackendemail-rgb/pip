@@ -1,6 +1,11 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:personal_assistant/core/services/llm_error_messages.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:http/http.dart' as http;
+import 'package:http/testing.dart';
 import 'package:personal_assistant/core/services/email_provider_preset.dart';
+import 'package:personal_assistant/core/services/llm_key_verifier.dart';
 import 'package:personal_assistant/core/services/pip_profile_service.dart';
 import 'package:personal_assistant/core/theme/pip_theme.dart';
 import 'package:personal_assistant/screens/splash_screen.dart';
@@ -36,6 +41,58 @@ void main() {
       expect(EmailProviderPreset.findForEmail('a@ymail.com')!.id, 'yahoo');
       expect(EmailProviderPreset.findForEmail('a@example.org'), isNull);
     });
+  });
+
+  group('Key verifier', () {
+    test('Gemini listing keeps chat models, best first', () {
+      const body = '{"models":['
+          '{"name":"models/gemini-2.5-pro","supportedGenerationMethods":["generateContent"]},'
+          '{"name":"models/text-embedding-004","supportedGenerationMethods":["embedContent"]},'
+          '{"name":"models/gemini-flash-latest","supportedGenerationMethods":["generateContent"]},'
+          '{"name":"models/gemini-2.5-flash-image","supportedGenerationMethods":["generateContent"]}]}';
+      final models = LlmKeyVerifier.preferredGeminiModels(LlmKeyVerifier.geminiChatModels(body));
+      expect(models, ['gemini-2.5-pro', 'gemini-flash-latest']);
+    });
+
+    test('newest Gemini version ranks first, retired older ones last', () {
+      final models = LlmKeyVerifier.preferredGeminiModels(
+          ['gemini-2.5-flash', 'gemini-3.8-flash', 'gemini-3.8-flash-lite', 'gemini-3.8-pro', 'gemini-flash-latest']);
+      expect(models, ['gemini-3.8-flash', 'gemini-3.8-flash-lite', 'gemini-3.8-pro', 'gemini-2.5-flash', 'gemini-flash-latest']);
+    });
+
+    test('OpenAI listing drops non-chat models', () {
+      const body = '{"data":[{"id":"gpt-4o-mini"},{"id":"text-embedding-3-small"},{"id":"whisper-1"},{"id":"o3-mini"}]}';
+      expect(LlmKeyVerifier.listedChatModels('openai', body), ['gpt-4o-mini', 'o3-mini']);
+    });
+
+    test('status codes become plain reasons', () {
+      expect(LlmKeyVerifier.describeStatus(400, '{"error":{"message":"API key not valid"}}'), contains("isn't valid"));
+      expect(LlmKeyVerifier.describeStatus(401, ''), contains('rejected'));
+      expect(LlmKeyVerifier.describeStatus(429, ''), contains('quota'));
+    });
+
+    test('verify reports success with models, and a timeout clearly', () async {
+      final ok = LlmKeyVerifier(
+        client: MockClient((_) async => http.Response('{"models":[{"name":"models/gemini-flash-latest",'
+            '"supportedGenerationMethods":["generateContent"]}]}', 200)),
+      );
+      final r = await ok.verify('gemini', 'k');
+      expect(r.ok, isTrue);
+      expect(r.models, ['gemini-flash-latest']);
+
+      final bad = LlmKeyVerifier(client: MockClient((_) async => http.Response('nope', 403)));
+      expect((await bad.verify('openai', 'k')).message, contains('rejected'));
+    });
+  });
+
+  test('provider errors become plain Pip lines, never raw JSON', () {
+    final quota = describeLlmError(Exception('Gemini failed: HTTP 429: {"error":{"code":429,"message":"You exceeded your current quota"}}'));
+    expect(quota, contains('usage limit'));
+    expect(quota, isNot(contains('{')));
+    expect(describeLlmError(Exception('HTTP 429 quota ... limit: 0')), contains('free plan'));
+    expect(describeLlmError(Exception('HTTP 401')), contains('rejected'));
+    expect(describeLlmError(TimeoutException('x')), contains('too long'));
+    expect(describeLlmError(Exception('weird')), contains('Try asking again'));
   });
 
   group('Profile', () {

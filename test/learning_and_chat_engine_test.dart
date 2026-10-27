@@ -10,9 +10,9 @@ import 'package:personal_assistant/core/domain/pip_emotion_state.dart';
 import 'package:personal_assistant/core/services/embedding_backfill_service.dart';
 import 'package:personal_assistant/core/services/pip_tool_registry.dart';
 import 'package:personal_assistant/core/services/task_provider.dart';
+import 'package:personal_assistant/features/companion/domain/pip_action_speech.dart';
 import 'package:personal_assistant/features/companion/presentation/cubit/pip_chat_engine.dart';
 import 'package:personal_assistant/features/companion/presentation/cubit/pip_conversation_history.dart';
-import 'package:personal_assistant/features/companion/presentation/cubit/pip_stage_cubit.dart';
 import 'package:personal_assistant/features/companion/presentation/cubit/pip_tool_coordinator.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -183,7 +183,7 @@ void main() {
     expect(describeToolResult('send_email', {'status': 'sent', 'recipient': 'a@b.co'}), contains('a@b.co'));
     expect(
       describeToolResult('set_reminder', {'status': 'scheduled', 'scheduled_time': '2026-10-27T09:05:00.000'}),
-      'Reminder set for 09:05.',
+      'Reminder set for 9:05 AM.',
     );
   });
 }

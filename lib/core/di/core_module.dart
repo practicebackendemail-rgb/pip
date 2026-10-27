@@ -11,6 +11,7 @@ import '../services/pip_tool_registry.dart';
 import '../services/sync/pip_cloud_sync_coordinator.dart';
 import '../services/task_provider.dart';
 import '../services/voice_service.dart';
+import '../services/tools/alarm_tools.dart';
 import '../services/tools/calendar_tools.dart';
 import '../services/tools/email_tools.dart';
 import '../services/tools/info_tools.dart';
@@ -68,6 +69,9 @@ abstract class CoreModule {
     registry.registerTool(WebSearchTool());
     registry.registerTool(WeatherTool());
     registry.registerTool(ReminderTool());
+    registry.registerTool(SetAlarmTool());
+    registry.registerTool(const ListRemindersTool());
+    registry.registerTool(CancelReminderTool());
     registry.registerTool(ReadEmailsTool(emailService: emailService));
     registry.registerTool(DraftEmailTool());
     registry.registerTool(SendEmailTool(emailService: emailService));

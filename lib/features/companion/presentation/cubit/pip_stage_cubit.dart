@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:injectable/injectable.dart';
 import '../../../../core/domain/event_log.dart';
@@ -7,6 +8,7 @@ import '../../../../core/domain/memory_repository.dart';
 import '../../../../core/domain/pip_emotion_state.dart';
 import '../../../../core/services/email_service.dart';
 import '../../../../core/services/llm_registry_service.dart';
+import '../../../../core/services/llm_error_messages.dart';
 import '../../../../core/services/pip_home_widget_service.dart';
 import '../../../../core/services/pip_profile_service.dart';
 import '../../../../core/services/pip_sfx_service.dart';
@@ -17,6 +19,7 @@ import '../../../../widgets/companion/pip_overlay_and_dock_area.dart';
 import '../../../../widgets/companion/pip_speech_coordinator.dart';
 import '../../../../widgets/companion/pip_stage_controller.dart';
 import '../../../../widgets/pip_params.dart';
+import '../../domain/pip_action_speech.dart';
 import '../../domain/pip_character_bible.dart';
 import '../../domain/pip_structured_reply.dart';
 import 'pip_chat_engine.dart';
@@ -125,6 +128,17 @@ class PipStageCubit extends Cubit<PipStageState> {
     eventLog.log('user_query', {'text': userText});
     emotionState.onUserInteraction();
 
+    // A spoken "yes"/"no" answers a pending confirmation instead of starting a new chat.
+    final pending = state.pendingActionConfirmation;
+    if (pending != null) {
+      final answer = parseConfirmation(userText);
+      if (answer == ConfirmAnswer.no) return cancelPendingAction();
+      if (answer == ConfirmAnswer.yes) {
+        if (!needsTapToConfirm(pending['level'] as String?)) return confirmPendingAction();
+        return speak("This one's important, so tap Execute to confirm.");
+      }
+    }
+
     final direct = PipExpressionMatcher.matchDirectAction(userText);
     if (direct != null) {
       emit(state.copyWith(userPromptCallout: userText, currentMood: direct.mood ?? state.currentMood));
@@ -179,13 +193,16 @@ class PipStageCubit extends Cubit<PipStageState> {
             'level': pending.pendingLevel?.name,
           },
         ));
-        speak("Should I proceed with executing ${pending.pendingToolName}?");
+        final ask = describePendingAction(pending.pendingToolName ?? '', pending.pendingArgs ?? const {});
+        final tapOnly = needsTapToConfirm(pending.pendingLevel?.name);
+        speak('$ask ${tapOnly ? 'Tap Execute to confirm.' : 'Just say yes or no.'}');
         return;
       }
       await _finishReply(outcome.reply!, embeddingProvider);
     } catch (e) {
       emit(state.copyWith(statusText: "Pip had trouble responding", currentMood: PipMood.unsure));
-      speak("My circuits encountered an error: $e");
+      debugPrint('Pip reply failed: $e');
+      speak(describeLlmError(e));
     } finally {
       if (state.isLoading) emit(state.copyWith(isLoading: false));
     }
@@ -242,7 +259,8 @@ class PipStageCubit extends Cubit<PipStageState> {
         speak(describeToolResult(toolName, res), isHappy: true);
       } catch (e) {
         emit(state.copyWith(isLoading: false, currentMood: PipMood.unsure, statusText: "Execution error"));
-        speak("Error executing action: $e");
+        debugPrint('Confirmed action failed: $e');
+        speak("Sorry, that didn't work. Try again in a moment.");
       }
     }
   }
@@ -251,7 +269,7 @@ class PipStageCubit extends Cubit<PipStageState> {
     PipSfxService.chirp();
     eventLog.log('tool_action_cancelled', {'tool': state.pendingActionConfirmation?['tool']});
     emit(state.copyWith(clearPendingAction: true, statusText: "Action cancelled", currentMood: PipMood.idle));
-    speak("Alright, I won't execute that action.");
+    speak("Okay, I won't do that.");
   }
 
   Future<void> triggerBriefing() async {
@@ -270,7 +288,8 @@ class PipStageCubit extends Cubit<PipStageState> {
       speak("Here is your morning agenda! Check the card below for the action plan.", isHappy: true);
     } catch (e) {
       emit(state.copyWith(isLoading: false, statusText: "Failed to generate briefing", currentMood: PipMood.unsure));
-      speak("Could not load briefing: $e");
+      debugPrint('Briefing failed: $e');
+      speak(describeLlmError(e));
     }
   }
 
@@ -279,22 +298,4 @@ class PipStageCubit extends Cubit<PipStageState> {
     _speech.dispose();
     return super.close();
   }
-}
-
-/// Spoken summary built from the tool's real result, not the model's guess.
-String describeToolResult(String toolName, Map<String, dynamic> result) {
-  final status = result['status'];
-  switch (status) {
-    case 'sent':
-      return "Done! Your email to ${result['recipient']} has been sent.";
-    case 'scheduled':
-      final at = DateTime.tryParse('${result['scheduled_time']}');
-      if (at == null) return "Reminder set.";
-      final hh = at.hour.toString().padLeft(2, '0');
-      final mm = at.minute.toString().padLeft(2, '0');
-      return "Reminder set for $hh:$mm.";
-    case 'created':
-      return "Done! It's on your calendar.";
-  }
-  return "Done! ${toolName.replaceAll('_', ' ')} finished${status != null ? ' ($status)' : ''}.";
 }

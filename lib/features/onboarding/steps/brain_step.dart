@@ -1,7 +1,6 @@
-import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../../core/di/injection.dart';
-import '../../../core/domain/llm_provider.dart';
+import '../../../core/services/llm_key_verifier.dart';
 import '../../../core/services/llm_registry_service.dart';
 import '../../../core/theme/pip_theme.dart';
 import '../../../widgets/pip_params.dart';
@@ -24,22 +23,30 @@ const _options = [
   _ProviderOption('ollama', 'Local (Ollama)', 'Runs on your own computer. No key.', ''),
 ];
 
+/// Pick a provider, check the key (one quick "list models" call), then pick
+/// a model from the ones that key can actually use.
 class BrainStep extends StatefulWidget {
   final ValueChanged<PipStepState> onState;
 
-  const BrainStep({super.key, required this.onState});
+  /// Shown as "Skip for now" during onboarding; null hides it (settings).
+  final VoidCallback? onSkip;
+
+  const BrainStep({super.key, required this.onState, this.onSkip});
 
   @override
-  State<BrainStep> createState() => _BrainPipStepState();
+  State<BrainStep> createState() => _BrainStepState();
 }
 
-class _BrainPipStepState extends State<BrainStep> implements OnboardingStepController {
+class _BrainStepState extends State<BrainStep> implements OnboardingStepController {
   final LlmRegistryService _llm = getIt<LlmRegistryService>();
+  final LlmKeyVerifier _verifier = LlmKeyVerifier();
   final TextEditingController _key = TextEditingController();
   final TextEditingController _endpoint = TextEditingController();
   String _provider = 'gemini';
   bool _showKey = false;
-  bool _verified = false;
+  bool _checking = false;
+  KeyCheckResult? _result;
+  String? _model;
 
   @override
   void initState() {
@@ -57,7 +64,8 @@ class _BrainPipStepState extends State<BrainStep> implements OnboardingStepContr
       _ => '',
     };
     _endpoint.text = _llm.ollamaBaseUrl;
-    _verified = false;
+    _result = null;
+    _model = null;
   }
 
   @override
@@ -68,51 +76,56 @@ class _BrainPipStepState extends State<BrainStep> implements OnboardingStepContr
   }
 
   bool get _isLocal => _provider == 'ollama';
+  String get _secret => _isLocal ? '' : _key.text.trim();
+
+  void _invalidate() {
+    if (_result != null) setState(() => _result = null);
+  }
+
+  Future<bool> _check() async {
+    if (!_isLocal && _secret.isEmpty) {
+      widget.onState(const PipStepState('Paste a key first, or skip for now.', mood: PipMood.unsure));
+      return false;
+    }
+    setState(() => _checking = true);
+    widget.onState(const PipStepState('Checking that key…', mood: PipMood.thinking));
+    final result = await _verifier.verify(_provider, _secret, baseUrl: _endpoint.text.trim());
+    if (!mounted) return false;
+    final saved = _llm.chatModel(_provider);
+    setState(() {
+      _checking = false;
+      _result = result;
+      _model = result.models.contains(saved) ? saved : (result.models.isEmpty ? null : result.models.first);
+    });
+    widget.onState(result.ok
+        ? PipStepState('It works! Pick which model I should think with.', mood: PipMood.excited)
+        : PipStepState('Hmm. ${result.message}', mood: PipMood.unsure));
+    return result.ok;
+  }
 
   @override
   Future<bool> commit() async {
+    if (!_isLocal && _secret.isEmpty) {
+      widget.onState(const PipStepState("No key yet, that's fine. I'll stay quiet until you add one in Settings."));
+      await _llm.setActiveProvider(_provider);
+      return true;
+    }
+    if (_result?.ok != true && !await _check()) return false;
     await _llm.setActiveProvider(_provider);
     if (_isLocal) {
-      if (_endpoint.text.trim().isNotEmpty) await _llm.setOllamaBaseUrl(_endpoint.text.trim());
+      await _llm.setOllamaBaseUrl(_endpoint.text.trim());
     } else {
-      if (_key.text.trim().isEmpty) {
-        widget.onState(const PipStepState("No key yet, that's fine. I'll stay quiet until you add one in Settings."));
-        return true;
-      }
-      await _llm.setKey(_provider, _key.text.trim());
+      await _llm.setKey(_provider, _secret);
     }
-    if (_verified) return true;
-
-    widget.onState(const PipStepState('Let me try saying hello with that…', mood: PipMood.thinking));
-    try {
-      await _llm
-          .getActiveProvider()
-          .chat([LlmMessage(role: 'user', content: 'Reply with the single word: ready')])
-          .timeout(const Duration(seconds: 20));
-      _verified = true;
-      widget.onState(const PipStepState('It works! I can think now.', mood: PipMood.excited));
-      return true;
-    } catch (e) {
-      widget.onState(PipStepState(
-        "Hmm, that didn't work. ${_shortReason(e)} Check it, or go Back and skip for now.",
-        mood: PipMood.unsure,
-      ));
-      return false;
-    }
-  }
-
-  String _shortReason(Object e) {
-    final s = e.toString();
-    if (e is TimeoutException) return 'Nobody answered in 20 seconds.';
-    if (s.contains('401') || s.contains('403') || s.toLowerCase().contains('api key')) return 'The key was rejected.';
-    if (s.contains('SocketException') || s.contains('Connection refused')) return "I couldn't reach the server.";
-    return 'The service said no.';
+    if (_model != null) await _llm.setChatModel(_provider, _model!);
+    return true;
   }
 
   @override
   Widget build(BuildContext context) {
     final text = Theme.of(context).textTheme;
     final option = _options.firstWhere((o) => o.id == _provider, orElse: () => _options.first);
+    final result = _result;
 
     return ListView(
       padding: const EdgeInsets.all(PipSpace.xl),
@@ -138,6 +151,7 @@ class _BrainPipStepState extends State<BrainStep> implements OnboardingStepContr
           TextField(
             controller: _endpoint,
             keyboardType: TextInputType.url,
+            onChanged: (_) => _invalidate(),
             decoration: const InputDecoration(labelText: 'Server address', hintText: 'http://localhost:11434/v1'),
           )
         else
@@ -146,7 +160,7 @@ class _BrainPipStepState extends State<BrainStep> implements OnboardingStepContr
             obscureText: !_showKey,
             autocorrect: false,
             enableSuggestions: false,
-            onChanged: (_) => _verified = false,
+            onChanged: (_) => _invalidate(),
             decoration: InputDecoration(
               labelText: '${option.label} API key',
               hintText: option.keyHint,
@@ -158,10 +172,44 @@ class _BrainPipStepState extends State<BrainStep> implements OnboardingStepContr
             ),
           ),
         const SizedBox(height: PipSpace.sm),
+        Row(
+          children: [
+            OutlinedButton.icon(
+              onPressed: _checking ? null : _check,
+              icon: _checking
+                  ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                  : Icon(result?.ok == true ? Icons.check_circle : Icons.wifi_tethering, size: 18,
+                      color: result?.ok == true ? PipColors.ok : null),
+              label: Text(_checking ? 'Checking…' : (result?.ok == true ? 'Key works' : 'Check key')),
+            ),
+            const Spacer(),
+            if (widget.onSkip != null)
+              TextButton(onPressed: _checking ? null : widget.onSkip, child: const Text('Skip for now')),
+          ],
+        ),
+        if (result != null && !result.ok) ...[
+          const SizedBox(height: PipSpace.sm),
+          Text(result.message, style: const TextStyle(color: PipColors.danger)),
+        ],
+        if (result?.ok == true && result!.models.isNotEmpty) ...[
+          const SizedBox(height: PipSpace.lg),
+          DropdownButtonFormField<String>(
+            initialValue: _model,
+            isExpanded: true,
+            decoration: InputDecoration(
+              labelText: 'Model',
+              helperText: '${result.models.length} available with this key. The first is my pick.',
+            ),
+            items: [
+              for (final m in result.models)
+                DropdownMenuItem(value: m, child: Text(m, overflow: TextOverflow.ellipsis)),
+            ],
+            onChanged: (m) => setState(() => _model = m),
+          ),
+        ],
+        const SizedBox(height: PipSpace.md),
         Text(
-          _isLocal
-              ? 'Nothing leaves your network.'
-              : 'Kept in your device\'s secure storage, never in plain settings or URLs.',
+          _isLocal ? 'Nothing leaves your network.' : "Kept in your device's secure storage, never in plain settings or URLs.",
           style: text.bodySmall,
         ),
       ],

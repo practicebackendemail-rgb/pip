@@ -6,33 +6,33 @@ import 'package:flutter_timezone/flutter_timezone.dart';
 import 'package:timezone/data/latest_all.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
 import '../../domain/pip_tool.dart';
+import 'schedule_store.dart';
 
-/// Reminders & Timers Tool (Survives app lifecycle termination via zonedSchedule)
+/// Reminders: a notification at a given time that survives the app closing
+/// (Android and iOS). On Windows it is an in-app timer while Pip runs.
 class ReminderTool extends PipTool {
-  static final FlutterLocalNotificationsPlugin _notificationsPlugin =
-      FlutterLocalNotificationsPlugin();
+  static final FlutterLocalNotificationsPlugin _plugin = FlutterLocalNotificationsPlugin();
   static bool _isInitialized = false;
+  static final Map<int, Timer> _desktopTimers = {};
 
   const ReminderTool()
       : super(
           name: 'set_reminder',
-          description: 'Set a timed reminder or alert notification that persists across app close.',
+          description: 'Remind the user about something at a time. Give "time" for a clock time '
+              '(e.g. "7:30 pm"), or "at_iso" for a full date and time, or "delay_seconds" for "in N minutes".',
           confirmationLevel: ToolConfirmationLevel.level2ReportAfter,
           parameters: const [
+            ToolParameterSpec(name: 'title', type: 'string', description: 'What to remind about.', isRequired: true),
             ToolParameterSpec(
-              name: 'title',
-              type: 'string',
-              description: 'The title of the reminder alert.',
-              isRequired: true,
-            ),
+                name: 'time', type: 'string', description: 'Clock time today/tomorrow, e.g. "16:00" or "7am".', isRequired: false),
             ToolParameterSpec(
-              name: 'delay_seconds',
-              type: 'integer',
-              description: 'Seconds from now to trigger the reminder (e.g. 60 for 1 minute).',
-              isRequired: true,
-            ),
+                name: 'at_iso', type: 'string', description: 'Exact local date-time, ISO-8601.', isRequired: false),
+            ToolParameterSpec(
+                name: 'delay_seconds', type: 'integer', description: 'Seconds from now.', isRequired: false),
           ],
         );
+
+  static bool get _persistent => !kIsWeb && (Platform.isAndroid || Platform.isIOS || Platform.isMacOS);
 
   static Future<void> ensureInitialized() async {
     if (_isInitialized) return;
@@ -46,100 +46,98 @@ class ReminderTool extends PipTool {
         tz.setLocalLocation(tz.getLocation('UTC'));
       }
 
-      const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
-      const darwinSettings = DarwinInitializationSettings(
+      const darwin = DarwinInitializationSettings(
         requestAlertPermission: true,
         requestBadgePermission: true,
         requestSoundPermission: true,
       );
-      const initSettings = InitializationSettings(
-        android: androidSettings,
-        iOS: darwinSettings,
-        macOS: darwinSettings,
+      await _plugin.initialize(
+        settings: const InitializationSettings(
+          android: AndroidInitializationSettings('@mipmap/ic_launcher'),
+          iOS: darwin,
+          macOS: darwin,
+        ),
       );
-
-      await _notificationsPlugin.initialize(settings: initSettings);
-
       if (!kIsWeb && Platform.isAndroid) {
-        final androidImpl = _notificationsPlugin.resolvePlatformSpecificImplementation<
-            AndroidFlutterLocalNotificationsPlugin>();
-        await androidImpl?.requestNotificationsPermission();
+        await _plugin
+            .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
+            ?.requestNotificationsPermission();
       }
-
       _isInitialized = true;
     } catch (e) {
       debugPrint('Notification init warning: $e');
     }
   }
 
-  @override
-  Future<Map<String, dynamic>> execute(Map<String, dynamic> args) async {
-    final title = (args['title'] as String?)?.trim() ?? 'Reminder';
-    final delay = (args['delay_seconds'] as num?)?.toInt() ?? 60;
+  static const NotificationDetails _details = NotificationDetails(
+    android: AndroidNotificationDetails(
+      'pip_reminders',
+      'Pip Reminders',
+      channelDescription: 'Scheduled reminders and alerts from Pip',
+      importance: Importance.max,
+      priority: Priority.high,
+      category: AndroidNotificationCategory.reminder,
+    ),
+    iOS: DarwinNotificationDetails(presentAlert: true, presentBadge: true, presentSound: true),
+    macOS: DarwinNotificationDetails(presentAlert: true, presentBadge: true, presentSound: true),
+  );
 
+  /// Schedules a notification for [at]. Returns how long it will persist.
+  static Future<String> scheduleNotification({required int id, required String title, required DateTime at}) async {
+    await ensureInitialized();
+    if (_persistent) {
+      await _plugin.zonedSchedule(
+        id: id,
+        title: 'Pip',
+        body: title,
+        scheduledDate: tz.TZDateTime.from(at, tz.local),
+        notificationDetails: _details,
+        androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+      );
+      return 'persistent';
+    }
+    _desktopTimers[id]?.cancel();
+    _desktopTimers[id] = Timer(at.difference(DateTime.now()), () {
+      _desktopTimers.remove(id);
+      _plugin.show(id: id, title: 'Pip', body: title, notificationDetails: _details);
+    });
+    return 'while_app_open';
+  }
+
+  static Future<void> cancelNotification(int id) async {
+    _desktopTimers.remove(id)?.cancel();
     try {
       await ensureInitialized();
-      final notifId = DateTime.now().millisecondsSinceEpoch ~/ 1000;
-      final scheduledDate = tz.TZDateTime.now(tz.local).add(Duration(seconds: delay));
+      await _plugin.cancel(id: id);
+    } catch (e) {
+      debugPrint('Cancel notification $id failed: $e');
+    }
+  }
 
-      const androidDetails = AndroidNotificationDetails(
-        'pip_reminders',
-        'Pip Reminders',
-        channelDescription: 'Scheduled reminders and alerts from Pip',
-        importance: Importance.max,
-        priority: Priority.high,
-      );
-      const darwinDetails = DarwinNotificationDetails(
-        presentAlert: true,
-        presentBadge: true,
-        presentSound: true,
-      );
-      const notificationDetails = NotificationDetails(
-        android: androidDetails,
-        iOS: darwinDetails,
-        macOS: darwinDetails,
-      );
+  @override
+  Future<Map<String, dynamic>> execute(Map<String, dynamic> args) async {
+    final title = (args['title'] as String?)?.trim();
+    final at = resolveWhen(
+      atIso: args['at_iso'] as String?,
+      time: args['time'] as String?,
+      delaySeconds: (args['delay_seconds'] as num?)?.toInt(),
+    );
+    if (title == null || title.isEmpty) return {'error': 'What should I remind you about?'};
+    if (at == null) return {'error': 'I need a time, like "7:30 pm" or "in 10 minutes".'};
+    if (!at.isAfter(DateTime.now())) return {'error': 'That time has already passed.'};
 
-      // On Android and iOS, zonedSchedule survives app process termination
-      if (!kIsWeb && (Platform.isAndroid || Platform.isIOS || Platform.isMacOS)) {
-        await _notificationsPlugin.zonedSchedule(
-          id: notifId,
-          title: 'Pip Alert',
-          body: title,
-          scheduledDate: scheduledDate,
-          notificationDetails: notificationDetails,
-          androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
-        );
-
-        return {
-          'status': 'scheduled',
-          'id': notifId,
-          'title': title,
-          'trigger_in_seconds': delay,
-          'scheduled_time': scheduledDate.toIso8601String(),
-          'persistence': 'persistent_os_alarm',
-        };
-      } else {
-        // Windows/Linux fallback timer with honest status disclosure
-        Timer(Duration(seconds: delay), () {
-          _notificationsPlugin.show(
-            id: notifId,
-            title: 'Pip Alert',
-            body: title,
-            notificationDetails: notificationDetails,
-          );
-        });
-
-        return {
-          'status': 'scheduled',
-          'id': notifId,
-          'title': title,
-          'trigger_in_seconds': delay,
-          'scheduled_time': scheduledDate.toIso8601String(),
-          'persistence': 'in_app_timer',
-          'note': 'works only while the app is open on desktop',
-        };
-      }
+    try {
+      final id = DateTime.now().millisecondsSinceEpoch ~/ 1000 % 0x7fffffff;
+      final persistence = await scheduleNotification(id: id, title: title, at: at);
+      await ScheduleStore.add(ScheduledItem(id: id, kind: 'reminder', title: title, at: at));
+      return {
+        'status': 'scheduled',
+        'id': id,
+        'title': title,
+        'scheduled_time': at.toIso8601String(),
+        'persistence': persistence,
+        if (persistence == 'while_app_open') 'note': 'On Windows this works only while Pip is running.',
+      };
     } catch (e) {
       return {'error': 'Failed to schedule reminder: $e'};
     }

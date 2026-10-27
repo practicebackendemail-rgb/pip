@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -16,7 +17,7 @@ import '../widgets/companion/pip_action_confirmation_banner.dart';
 import '../widgets/companion/pip_overlay_and_dock_area.dart';
 import '../widgets/companion/pip_prompt_status_pill.dart';
 import '../widgets/companion/pip_stage_header.dart';
-import '../widgets/companion/pip_stage_scenery.dart';
+import '../widgets/pocket_world/pip_pocket_world.dart';
 import '../widgets/pip_companion.dart';
 
 /// Pure Clean Architecture stage screen powered exclusively by PipStageCubit (Zero setState).
@@ -41,10 +42,29 @@ class _CompanionStageScreenState extends State<CompanionStageScreen> {
     "Need a hand? I have two. Well, grippers.",
   ];
   int _tapCount = 0;
+  StreamSubscription<PipStageState>? _confirmListen;
+
+  /// Once Pip finishes asking "shall I…?", open the mic for the answer, so a
+  /// voice conversation stays hands-free (tap still works).
+  void _listenForConfirmations() {
+    final cubit = context.read<PipStageCubit>();
+    var wasTyping = cubit.state.isTypewriting;
+    _confirmListen = cubit.stream.listen((s) {
+      final finishedAsking = wasTyping && !s.isTypewriting && s.pendingActionConfirmation != null;
+      wasTyping = s.isTypewriting;
+      final audio = getIt<PipAudioCoordinator>();
+      if (finishedAsking && audio.isInitialized && !audio.isActiveListening) {
+        audio.startActiveListening(onQuery: cubit.handleQuery);
+      }
+    });
+  }
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _listenForConfirmations();
+    });
     PipProfileService.userName().then((name) {
       if (!mounted || name == null) return;
       context.read<PipStageCubit>().speak("${PipProfileService.greeting(name)} What are we tackling today?", isHappy: true);
@@ -64,6 +84,7 @@ class _CompanionStageScreenState extends State<CompanionStageScreen> {
 
   @override
   void dispose() {
+    _confirmListen?.cancel();
     _textController.dispose();
     super.dispose();
   }
@@ -83,7 +104,7 @@ class _CompanionStageScreenState extends State<CompanionStageScreen> {
 
             return Scaffold(
               backgroundColor: PipColors.background,
-              body: PipStageScenery(
+              body: PipPocketSky(
                 child: Stack(
                   children: [
                     const PipAmbientGlow(),
@@ -113,11 +134,10 @@ class _CompanionStageScreenState extends State<CompanionStageScreen> {
                             const SizedBox(height: 36),
                           Expanded(
                             child: Center(
-                              child: Hero(
-                                tag: 'pip_companion',
-                                child: PipDeskCompanion(
-                                  width: state.overlay == CompanionOverlay.none ? 310 : 230,
-                                  height: state.overlay == CompanionOverlay.none ? 230 : 160,
+                              child: FittedBox(
+                                fit: BoxFit.scaleDown,
+                                child: PipPocketIsland(
+                                  maxWidth: state.overlay == CompanionOverlay.none ? 560 : 360,
                                   mood: audio.isActiveListening ? PipMood.listening : state.currentMood,
                                   onTap: () {
                                     if (state.isSleeping) {

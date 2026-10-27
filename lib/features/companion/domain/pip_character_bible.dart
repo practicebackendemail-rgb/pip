@@ -15,14 +15,34 @@ Hard rules:
 5. If you learn something new about the user (e.g. coffee preference, work hours, projects), output it in memory_candidates.
 ''';
 
+  /// The model has no clock of its own: without this it guesses dates from
+  /// its training data (and booked "today" in the wrong year).
+  static String clockContext(DateTime now) {
+    const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+    const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September',
+      'October', 'November', 'December'];
+    final off = now.timeZoneOffset;
+    final sign = off.isNegative ? '-' : '+';
+    final hh = off.inHours.abs().toString().padLeft(2, '0');
+    final mm = (off.inMinutes.abs() % 60).toString().padLeft(2, '0');
+    String two(int v) => v.toString().padLeft(2, '0');
+    final iso = '${now.year}-${two(now.month)}-${two(now.day)}T${two(now.hour)}:${two(now.minute)}:00$sign$hh:$mm';
+    return '[Current local time: ${days[now.weekday - 1]} ${now.day} ${months[now.month - 1]} ${now.year}, '
+        '${two(now.hour)}:${two(now.minute)} ($iso, ${now.timeZoneName}). '
+        'Resolve "today", "tomorrow" and times like "4 pm" against this, in this timezone, '
+        'and use this year for any dates.]';
+  }
+
   static String buildSystemPrompt({
     required String emotionContext,
     double humorLevel = 0.5,
     List<String> activeRules = const [],
     List<String> relevantMemories = const [],
     String toolsContext = '',
+    DateTime? now,
   }) {
     final buffer = StringBuffer(corePersona);
+    buffer.writeln('\n${clockContext(now ?? DateTime.now())}');
     buffer.writeln('\n$emotionContext');
     buffer.writeln('[Humor Dial: ${(humorLevel * 100).toInt()}%]');
 

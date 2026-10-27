@@ -8,6 +8,8 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.READ_CALENDAR" />
     <uses-permission android:name="android.permission.WRITE_CALENDAR" />
+    <!-- Lets Pip create and dismiss alarms in the phone's Clock app. -->
+    <uses-permission android:name="com.android.alarm.permission.SET_ALARM" />
 
     <application
         android:label="personal_assistant"
@@ -61,6 +63,13 @@
     </application>
 
     <queries>
+        <!-- Android 11+ package visibility: let Pip find the Clock app. -->
+        <intent>
+            <action android:name="android.intent.action.SET_ALARM"/>
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.DISMISS_ALARM"/>
+        </intent>
         <intent>
             <action android:name="android.intent.action.PROCESS_TEXT"/>
             <data android:mimeType="text/plain"/>

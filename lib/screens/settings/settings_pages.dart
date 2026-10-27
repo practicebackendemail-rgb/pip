@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../core/di/injection.dart';
 import '../../core/services/llm_registry_service.dart';
 import '../../core/services/pip_profile_service.dart';
+import '../../core/services/pip_sfx_service.dart';
 import '../../core/theme/pip_theme.dart';
 import '../../features/onboarding/onboarding_flow.dart';
 import '../../features/onboarding/steps/backup_step.dart';
@@ -197,6 +198,22 @@ class _PersonalityPageState extends State<PersonalityPage> {
     return ('MAXIMUM SILLINESS ENGAGED. Beep boop!', PipMood.laughing);
   }
 
+  /// Plays a chirp and reports what happened, so a silent phone can be told
+  /// apart from a broken player.
+  Future<void> _testSound() async {
+    final messenger = ScaffoldMessenger.of(context);
+    if (!PipSfxService.enableAudio) {
+      messenger.showSnackBar(const SnackBar(content: Text('Sound effects are off. Turn them on first.')));
+      return;
+    }
+    final ok = await PipSfxService.play(PipSound.happy);
+    messenger.showSnackBar(SnackBar(
+      content: Text(ok
+          ? "Played. If you heard nothing, check your phone's media volume."
+          : "Couldn't play the sound: ${PipSfxService.lastError}"),
+    ));
+  }
+
   Future<void> _save() async {
     await PipProfileService.setUserName(_name.text);
     if (_humor != null) await PipProfileService.setHumor(_humor!);
@@ -235,6 +252,26 @@ class _PersonalityPageState extends State<PersonalityPage> {
               const Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [Text('Dry', style: TextStyle(color: PipColors.muted)), Text('Silly', style: TextStyle(color: PipColors.muted))],
+              ),
+              const SizedBox(height: PipSpace.xl),
+              Text('Sounds', style: text.titleMedium),
+              SwitchListTile.adaptive(
+                contentPadding: EdgeInsets.zero,
+                title: const Text('Sound effects'),
+                subtitle: Text('Chirps and beeps when Pip reacts', style: text.bodySmall),
+                value: PipSfxService.enableAudio,
+                onChanged: (v) async {
+                  await PipSfxService.setEnabled(v);
+                  setState(() {});
+                },
+              ),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: OutlinedButton.icon(
+                  onPressed: _testSound,
+                  icon: const Icon(Icons.volume_up_outlined, size: 18),
+                  label: const Text('Test sound'),
+                ),
               ),
               const SizedBox(height: PipSpace.xxl),
               FilledButton(onPressed: _save, child: const Text('Save')),

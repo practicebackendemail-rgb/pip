@@ -14,6 +14,7 @@ import 'core/services/llm_registry_service.dart';
 import 'core/services/nightly_reflection_service.dart';
 import 'core/services/pip_audio_coordinator.dart';
 import 'core/services/pip_overlay_bridge.dart';
+import 'core/services/pip_sfx_service.dart';
 import 'core/services/pip_desktop_window_manager.dart';
 import 'core/services/sync/pip_cloud_sync_coordinator.dart';
 import 'core/services/task_provider.dart';
@@ -37,6 +38,8 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await configureDependencies();
   await PipDesktopWindowManager.initialize();
+  await PipSfxService.loadSetting();
+  PipSfxService.preload();
 
   runApp(const PersonalAssistantApp());
 }

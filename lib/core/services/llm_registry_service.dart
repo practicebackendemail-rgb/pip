@@ -37,6 +37,25 @@ class LlmRegistryService extends ChangeNotifier {
 
   String _groqKey = '';
 
+  /// Chat model per provider, chosen by the user; falls back to these defaults.
+  static const Map<String, String> defaultModels = {
+    'gemini': 'gemini-flash-latest',
+    'openai': 'gpt-4o-mini',
+    'anthropic': 'claude-3-5-sonnet-20241022',
+    'groq': 'llama-3.3-70b-versatile',
+    'ollama': 'qwen2.5-coder:7b',
+  };
+  final Map<String, String> _chatModels = {};
+
+  String chatModel(String providerId) => _chatModels[providerId] ?? defaultModels[providerId] ?? '';
+
+  Future<void> setChatModel(String providerId, String model) async {
+    _chatModels[providerId] = model;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('llm_model_$providerId', model);
+    notifyListeners();
+  }
+
   Future<void> get initialized => _initCompleter.future;
 
   String get activeProviderId => _activeProviderId;
@@ -57,6 +76,10 @@ class LlmRegistryService extends ChangeNotifier {
       _activeProviderId = prefs.getString('llm_active_provider') ?? 'gemini';
       _embeddingProviderId = prefs.getString('llm_embedding_provider') ?? 'gemini';
       _ollamaBaseUrl = prefs.getString('llm_ollama_base') ?? 'http://localhost:11434/v1';
+      for (final id in defaultModels.keys) {
+        final saved = prefs.getString('llm_model_$id');
+        if (saved != null && saved.isNotEmpty) _chatModels[id] = saved;
+      }
 
       // One-time migration: migrate legacy plain-text keys from SharedPreferences to FlutterSecureStorage
       await _migrateLegacyKeys(prefs);
@@ -160,7 +183,7 @@ class LlmRegistryService extends ChangeNotifier {
           label: 'OpenAI (GPT-4o)',
           baseUrl: 'https://api.openai.com/v1',
           getApiKey: () => _openAiKey,
-          modelName: 'gpt-4o-mini',
+          modelName: chatModel('openai'),
         );
       case 'ollama':
         return OpenAiCompatibleLlmAdapter(
@@ -168,23 +191,23 @@ class LlmRegistryService extends ChangeNotifier {
           label: 'Local Ollama',
           baseUrl: _ollamaBaseUrl,
           getApiKey: () => '',
-          modelName: 'qwen2.5-coder:7b',
+          modelName: chatModel('ollama'),
         );
       case 'groq':
         return GroqLlmAdapter(
           apiKey: _groqKey,
-          modelName: 'llama-3.3-70b-versatile',
+          modelName: chatModel('groq'),
         );
       case 'anthropic':
         return AnthropicLlmAdapter(
           getApiKey: () => _anthropicKey,
-          modelName: 'claude-3-5-sonnet-20241022',
+          modelName: chatModel('anthropic'),
         );
       case 'gemini':
       default:
         return GeminiLlmAdapter(
           getApiKey: () => _geminiKey,
-          activeModel: 'gemini-3.8-flash',
+          activeModel: chatModel('gemini'),
         );
     }
   }
