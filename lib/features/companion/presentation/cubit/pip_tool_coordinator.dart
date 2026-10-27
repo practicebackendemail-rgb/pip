@@ -62,13 +62,15 @@ class PipToolCoordinator {
       }
 
       // Level 0 or 2: Execute immediately
-      eventLog.log('tool_invoked', {'tool': call.toolName, 'args': call.arguments});
+      // Log tool names and arg keys only: values and results can hold email
+      // bodies, recipients or note text, which must not reach the event log.
+      eventLog.log('tool_invoked', {'tool': call.toolName, 'arg_keys': call.arguments.keys.toList()});
       try {
         final result = await tool.execute(call.arguments);
-        eventLog.log('tool_success', {'tool': call.toolName, 'result': result});
+        eventLog.log(result.containsKey('error') ? 'tool_failure' : 'tool_success', {'tool': call.toolName});
         _addResult(messages, call, result);
       } catch (e) {
-        eventLog.log('tool_failure', {'tool': call.toolName, 'error': e.toString()});
+        eventLog.log('tool_failure', {'tool': call.toolName, 'exception': e.runtimeType.toString()});
         _addResult(messages, call, {'error': e.toString()});
       }
     }

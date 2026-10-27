@@ -18,6 +18,7 @@ import '../../../../widgets/companion/pip_stage_controller.dart';
 import '../../../../widgets/pip_params.dart';
 import '../../domain/pip_character_bible.dart';
 import '../../domain/pip_structured_reply.dart';
+import 'pip_chat_engine.dart';
 import 'pip_memory_helper.dart';
 import 'pip_stage_state.dart';
 import 'pip_tool_coordinator.dart';
@@ -34,6 +35,7 @@ class PipStageCubit extends Cubit<PipStageState> {
   final PipSpeechCoordinator _speech = PipSpeechCoordinator();
   late final PipToolCoordinator _toolCoordinator;
   late final PipMemoryHelper _memoryHelper;
+  late final PipChatEngine _chatEngine;
 
   PipStageCubit({
     required this.llmRegistry,
@@ -46,6 +48,7 @@ class PipStageCubit extends Cubit<PipStageState> {
   }) : super(const PipStageState()) {
     _toolCoordinator = PipToolCoordinator(toolRegistry: toolRegistry, eventLog: eventLog);
     _memoryHelper = PipMemoryHelper(memoryRepository);
+    _chatEngine = PipChatEngine(toolCoordinator: _toolCoordinator);
     _initGreeting();
     _syncHomeWidget();
   }
@@ -95,7 +98,20 @@ class PipStageCubit extends Cubit<PipStageState> {
   }
 
   void setOverlay(CompanionOverlay overlay) => emit(state.copyWith(overlay: overlay));
-  void dismissOverlay() => emit(state.copyWith(overlay: CompanionOverlay.none));
+  void dismissOverlay() {
+    if (state.overlay == CompanionOverlay.briefing) eventLog.log('briefing_closed');
+    emit(state.copyWith(overlay: CompanionOverlay.none));
+  }
+
+  /// Thumbs feedback on Pip's current reply; feeds the learning loop.
+  void rateReply({required bool positive}) {
+    final text = state.speechText;
+    if (text.isEmpty) return;
+    eventLog.log(positive ? 'reply_thumbs_up' : 'reply_thumbs_down', {
+      'reply': text.length > 160 ? text.substring(0, 160) : text,
+    });
+    emit(state.copyWith(statusText: positive ? "Thanks for the feedback!" : "Noted, I'll adjust."));
+  }
   void clearSpeechBubble() {
     _speech.clear();
     emit(state.copyWith(speechText: "", isTypewriting: false));
@@ -143,59 +159,29 @@ class PipStageCubit extends Cubit<PipStageState> {
         toolsContext: toolRegistry.buildToolsPromptContext(),
       );
 
-      final messages = [
-        LlmMessage(role: 'system', content: systemContext),
-        LlmMessage(role: 'user', content: userText),
-      ];
-
-      LlmResponse response;
-      int iterations = 0;
-      final toolSpecs = provider.capabilities.supportsTools ? toolRegistry.toToolSpecs() : null;
-
-      while (iterations < 5) {
-        iterations++;
-        response = await provider.chat(
-          messages,
-          tools: toolSpecs,
-          jsonSchema: toolSpecs == null ? PipStructuredReply.jsonSchema : null,
-        ).timeout(const Duration(seconds: 45));
-
-        List<ToolCallRequest> calls = List.from(response.toolCalls);
-        PipStructuredReply? structured;
-
-        if (calls.isEmpty) {
-          structured = PipStructuredReply.parseRaw(response.text);
-          if (structured.toolCallName != null && structured.toolCallName!.isNotEmpty) {
-            calls.add(ToolCallRequest(toolName: structured.toolCallName!, arguments: structured.toolCallArgs ?? {}));
-          }
-        }
-
-        if (calls.isEmpty) {
-          final parsed = structured ?? PipStructuredReply.parseRaw(response.text);
-          await _finishReply(parsed, embeddingProvider);
-          return;
-        }
-
-        final execResult = await _toolCoordinator.executeCalls(calls, messages);
-        if (execResult.requiresConfirmation) {
-          emit(state.copyWith(
-            isLoading: false,
-            currentMood: PipMood.idle,
-            statusText: "Confirmation Required",
-            pendingActionConfirmation: {
-              'tool': execResult.pendingToolName,
-              'args': execResult.pendingArgs,
-              'description': execResult.pendingDescription,
-              'level': execResult.pendingLevel?.name,
-            },
-          ));
-          speak("Should I proceed with executing ${execResult.pendingToolName}?");
-          return;
-        }
+      final outcome = await _chatEngine.run(
+        provider: provider,
+        systemContext: systemContext,
+        userText: userText,
+        toolSpecs: provider.capabilities.supportsTools ? toolRegistry.toToolSpecs() : null,
+      );
+      final pending = outcome.pendingConfirmation;
+      if (pending != null) {
+        emit(state.copyWith(
+          isLoading: false,
+          currentMood: PipMood.idle,
+          statusText: "Confirmation Required",
+          pendingActionConfirmation: {
+            'tool': pending.pendingToolName,
+            'args': pending.pendingArgs,
+            'description': pending.pendingDescription,
+            'level': pending.pendingLevel?.name,
+          },
+        ));
+        speak("Should I proceed with executing ${pending.pendingToolName}?");
+        return;
       }
-
-      response = await provider.chat(messages, tools: null, jsonSchema: PipStructuredReply.jsonSchema).timeout(const Duration(seconds: 45));
-      await _finishReply(PipStructuredReply.parseRaw(response.text), embeddingProvider);
+      await _finishReply(outcome.reply!, embeddingProvider);
     } catch (e) {
       emit(state.copyWith(statusText: "Pip had trouble responding", currentMood: PipMood.unsure));
       speak("My circuits encountered an error: $e");
@@ -243,10 +229,16 @@ class PipStageCubit extends Cubit<PipStageState> {
     if (tool != null) {
       try {
         final res = await tool.execute(args);
+        final error = res['error'];
+        eventLog.log('tool_confirmed_and_executed', {'tool': toolName, 'ok': error == null});
+        if (error != null) {
+          emit(state.copyWith(isLoading: false, currentMood: PipMood.unsure, statusText: "Action failed"));
+          speak("That didn't work: $error");
+          return;
+        }
         PipSfxService.happy();
-        eventLog.log('tool_confirmed_and_executed', {'tool': toolName, 'result': res});
         emit(state.copyWith(isLoading: false, currentMood: PipMood.happy, statusText: "Action complete!"));
-        speak("Action confirmed and executed successfully!", isHappy: true);
+        speak(describeToolResult(toolName, res), isHappy: true);
       } catch (e) {
         emit(state.copyWith(isLoading: false, currentMood: PipMood.unsure, statusText: "Execution error"));
         speak("Error executing action: $e");
@@ -262,6 +254,7 @@ class PipStageCubit extends Cubit<PipStageState> {
   }
 
   Future<void> triggerBriefing() async {
+    eventLog.log('briefing_opened');
     emit(state.copyWith(isLoading: true, isSleeping: false, overlay: CompanionOverlay.briefing, userPromptCallout: "☀️ Daily Briefing", statusText: "Pip is digesting your agenda...", currentMood: PipMood.thinking));
 
     final emails = await emailService.fetchUnreadSummaries();
@@ -285,4 +278,22 @@ class PipStageCubit extends Cubit<PipStageState> {
     _speech.dispose();
     return super.close();
   }
+}
+
+/// Spoken summary built from the tool's real result, not the model's guess.
+String describeToolResult(String toolName, Map<String, dynamic> result) {
+  final status = result['status'];
+  switch (status) {
+    case 'sent':
+      return "Done! Your email to ${result['recipient']} has been sent.";
+    case 'scheduled':
+      final at = DateTime.tryParse('${result['scheduled_time']}');
+      if (at == null) return "Reminder set.";
+      final hh = at.hour.toString().padLeft(2, '0');
+      final mm = at.minute.toString().padLeft(2, '0');
+      return "Reminder set for $hh:$mm.";
+    case 'created':
+      return "Done! It's on your calendar.";
+  }
+  return "Done! ${toolName.replaceAll('_', ' ')} finished${status != null ? ' ($status)' : ''}.";
 }

@@ -12,6 +12,10 @@ class PipStructuredReply {
   final String? toolCallName;
   final Map<String, dynamic>? toolCallArgs;
 
+  /// False when the model answered in plain text instead of the JSON contract,
+  /// meaning emotion/animation are defaults rather than the model's choice.
+  final bool isStructured;
+
   const PipStructuredReply({
     required this.text,
     this.emotion = 'calm',
@@ -21,6 +25,7 @@ class PipStructuredReply {
     this.memoryCandidates = const [],
     this.toolCallName,
     this.toolCallArgs,
+    this.isStructured = true,
   });
 
   Map<String, dynamic> toJson() => {
@@ -96,7 +101,7 @@ class PipStructuredReply {
     }
 
     // 3. Fallback: treat raw text as plain conversational reply with default calm emotion
-    return PipStructuredReply(text: clean);
+    return PipStructuredReply(text: clean, isStructured: false);
   }
 
   /// Resolves the structured emotion and animation into Pip's visual vector posture

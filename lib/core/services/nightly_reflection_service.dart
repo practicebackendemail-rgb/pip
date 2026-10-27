@@ -12,6 +12,7 @@ import 'llm_registry_service.dart';
 /// Includes 20-hour elapsed guard, atomic batch marking of processed events,
 /// stale-free profile facts querying, lastReinforcedAt decay, and rule deduplication.
 class NightlyReflectionService extends ChangeNotifier {
+  static const int maxLearnedRules = 20;
   static const String _metaLastReflection = 'pip_last_reflection_at';
   final MemoryRepository memoryRepository;
   final EventLogService eventLog;
@@ -153,7 +154,6 @@ Output pure JSON matching this exact structure:
     // 1. Ingest Facts with confidence boosting
     final newFacts = decoded['new_facts'];
     if (newFacts is List) {
-      final freshFacts = await memoryRepository.getProfile();
       for (final f in newFacts) {
         if (f is! Map) continue;
         final k = f['key'] as String?;
@@ -161,11 +161,8 @@ Output pure JSON matching this exact structure:
         var c = (f['confidence'] as num?)?.toDouble() ?? 0.6;
         c = c.clamp(0.1, 1.0);
 
+        // upsertFact reinforces a same-value fact itself; a new value takes c.
         if (k != null && v != null) {
-          final existing = freshFacts.where((item) => item.key == k).toList();
-          if (existing.isNotEmpty) {
-            c = (existing.first.confidence + 0.1).clamp(0.1, 0.95);
-          }
           await memoryRepository.upsertFact(k, v, confidence: c);
         }
       }
@@ -182,6 +179,7 @@ Output pure JSON matching this exact structure:
           await memoryRepository.addRule(inst, scope: scope, source: 'learned');
         }
       }
+      await _capLearnedRules();
     }
 
     // 3. Ingest Memories with embedding
@@ -209,6 +207,16 @@ Output pure JSON matching this exact structure:
           );
         }
       }
+    }
+  }
+
+  /// Keeps the prompt small: only the newest [maxLearnedRules] learned rules
+  /// stay active; older ones are tombstoned. User-written rules are untouched.
+  Future<void> _capLearnedRules() async {
+    final learned = (await memoryRepository.getActiveRules()).where((r) => r.source == 'learned').toList()
+      ..sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
+    for (final rule in learned.skip(maxLearnedRules)) {
+      await memoryRepository.deleteRule(rule.id);
     }
   }
 

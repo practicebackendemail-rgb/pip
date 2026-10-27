@@ -21,6 +21,9 @@ abstract class MemoryRepository {
     double minSimilarity = 0.35,
   });
   Future<List<MemoryItem>> getAllMemoriesIncludingDeleted();
+  /// Live memories without a vector from [embeddingModel] (missing or other model).
+  Future<List<MemoryItem>> getMemoriesNeedingEmbedding(String embeddingModel, {int limit = 20});
+  Future<void> updateMemoryEmbedding(String id, List<double> embedding, String embeddingModel);
   Future<void> importMemory(MemoryItem memory);
   Future<void> deleteMemory(String id);
 
@@ -108,6 +111,27 @@ class SqlCipherMemoryRepository extends ChangeNotifier implements MemoryReposito
   @override
   Future<List<MemoryItem>> getAllMemoriesIncludingDeleted() async {
     return await _db.getAllMemories(includeDeleted: true);
+  }
+
+  @override
+  Future<List<MemoryItem>> getMemoriesNeedingEmbedding(String embeddingModel, {int limit = 20}) async {
+    final all = await _db.getAllMemories(includeDeleted: false);
+    return all
+        .where((m) => m.text.isNotEmpty && (m.embedding == null || m.embedding!.isEmpty || m.embeddingModel != embeddingModel))
+        .take(limit)
+        .toList();
+  }
+
+  @override
+  Future<void> updateMemoryEmbedding(String id, List<double> embedding, String embeddingModel) async {
+    final all = await _db.getAllMemories(includeDeleted: false);
+    final match = all.cast<MemoryItem?>().firstWhere((m) => m?.id == id, orElse: () => null);
+    if (match == null) return;
+    await _db.upsertMemory(match.copyWith(
+      embedding: embedding,
+      embeddingModel: embeddingModel,
+      updatedAt: DateTime.now(),
+    ));
   }
 
   @override

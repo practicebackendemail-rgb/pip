@@ -77,6 +77,7 @@ class TaskProvider extends ChangeNotifier {
       ];
       _saveTasks();
     }
+    checkOverdueTasks();
     notifyListeners();
   }
 
@@ -109,6 +110,7 @@ class TaskProvider extends ChangeNotifier {
       dueDate: dueDate,
     );
     _tasks.insert(0, newTask);
+    eventLog?.log('task_created', {'taskId': newTask.id, 'priority': priority.name, 'hasDue': dueDate != null});
     _saveTasks();
     notifyListeners();
   }
@@ -123,11 +125,12 @@ class TaskProvider extends ChangeNotifier {
         _completedTodayCount++;
         eventLog?.log('task_completed', {'taskId': task.id, 'title': task.title});
         emotionState?.onTaskCompleted();
-      } else if (_completedTodayCount > 0) {
-        _completedTodayCount--;
+      } else {
+        eventLog?.log('task_uncompleted', {'taskId': task.id});
+        if (_completedTodayCount > 0) _completedTodayCount--;
       }
       _saveTasks();
-      _checkOverdueTasks();
+      checkOverdueTasks();
       notifyListeners();
     }
   }
@@ -166,24 +169,31 @@ class TaskProvider extends ChangeNotifier {
     if (changed) {
       emotionState?.onTaskCompleted();
       _saveTasks();
-      _checkOverdueTasks();
+      checkOverdueTasks();
       notifyListeners();
     }
   }
 
-  void _checkOverdueTasks() {
-    final now = DateTime.now();
-    final overdueCount = _tasks.where((t) => !t.isCompleted && t.dueDate != null && t.dueDate!.isBefore(now)).length;
-    if (overdueCount >= 3) {
+  int _lastOverdueCount = 0;
+
+  /// Lowers Pip's mood only when the overdue count grows (and is at least 3),
+  /// so completing a task never counts as more overdue work. Also called on
+  /// app resume, since tasks become overdue while the app is closed.
+  void checkOverdueTasks({DateTime? now}) {
+    final t = now ?? DateTime.now();
+    final overdueCount = _tasks.where((x) => !x.isCompleted && x.dueDate != null && x.dueDate!.isBefore(t)).length;
+    if (overdueCount > _lastOverdueCount && overdueCount >= 3) {
       eventLog?.log('tasks_overdue_accumulated', {'count': overdueCount});
       emotionState?.onOverdueAccumulation();
     }
+    _lastOverdueCount = overdueCount;
   }
 
   void deleteAllCompletedTasks() {
     final before = _tasks.length;
     _tasks.removeWhere((t) => t.isCompleted);
     if (_tasks.length != before) {
+      eventLog?.log('task_deleted', {'count': before - _tasks.length, 'completed': true});
       _saveTasks();
       notifyListeners();
     }
@@ -217,7 +227,9 @@ class TaskProvider extends ChangeNotifier {
   }
 
   void deleteTask(String id) {
+    final before = _tasks.length;
     _tasks.removeWhere((t) => t.id == id);
+    if (_tasks.length != before) eventLog?.log('task_deleted', {'taskId': id});
     _saveTasks();
     notifyListeners();
   }

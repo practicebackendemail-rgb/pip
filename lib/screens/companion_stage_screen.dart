@@ -86,6 +86,7 @@ class _CompanionStageScreenState extends State<CompanionStageScreen> {
                                 text: state.speechText,
                                 isStreaming: state.isTypewriting,
                                 onDismiss: cubit.clearSpeechBubble,
+                                onRate: (positive) => cubit.rateReply(positive: positive),
                                 onOpenFullLog: () => ChatTranscriptSheet.show(context, const []),
                               ).animate().fadeIn(duration: AppMotionTokens.fast).slideY(begin: 0.08, end: 0),
                             )

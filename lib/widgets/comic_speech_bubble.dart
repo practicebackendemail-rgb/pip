@@ -10,12 +10,16 @@ class ComicSpeechBubble extends StatelessWidget {
   final VoidCallback? onDismiss;
   final VoidCallback? onOpenFullLog;
 
+  /// Thumbs feedback; true = helpful. Shown once the reply finishes typing.
+  final ValueChanged<bool>? onRate;
+
   const ComicSpeechBubble({
     super.key,
     required this.text,
     this.isStreaming = false,
     this.onDismiss,
     this.onOpenFullLog,
+    this.onRate,
   });
 
   @override
@@ -62,6 +66,10 @@ class ComicSpeechBubble extends StatelessWidget {
                   const _ChirpBlinker(),
                 ],
                 const Spacer(),
+                if (onRate != null && !isStreaming) ...[
+                  _RateIcon(icon: CupertinoIcons.hand_thumbsup, label: 'Helpful', onTap: () => onRate!(true)),
+                  _RateIcon(icon: CupertinoIcons.hand_thumbsdown, label: 'Not helpful', onTap: () => onRate!(false)),
+                ],
                 if (onOpenFullLog != null)
                   GestureDetector(
                     onTap: onOpenFullLog,
@@ -217,6 +225,29 @@ class _ChirpBlinkerState extends State<_ChirpBlinker>
         decoration: const BoxDecoration(
           color: Color(0xFFE2A826),
           shape: BoxShape.circle,
+        ),
+      ),
+    );
+  }
+}
+
+class _RateIcon extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+
+  const _RateIcon({required this.icon, required this.label, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      button: true,
+      label: label,
+      child: GestureDetector(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 4),
+          child: Icon(icon, size: 14, color: AppleTheme.textTertiary),
         ),
       ),
     );
