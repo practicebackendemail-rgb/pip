@@ -40,6 +40,30 @@ class OpenAiCompatibleLlmAdapter implements LlmProvider {
     required this.modelName,
   });
 
+  /// Maps messages to Chat Completions format: assistant `tool_calls` and
+  /// `tool` role results keyed by `tool_call_id`.
+  static List<Map<String, dynamic>> buildMessages(List<LlmMessage> messages) {
+    return messages.map((m) {
+      if (m.role == 'tool') {
+        return <String, dynamic>{'role': 'tool', 'tool_call_id': m.toolCallId, 'content': m.content};
+      }
+      if (m.hasToolCalls) {
+        return <String, dynamic>{
+          'role': 'assistant',
+          'content': m.content.isEmpty ? null : m.content,
+          'tool_calls': m.toolCalls
+              .map((c) => {
+                    'id': c.id,
+                    'type': 'function',
+                    'function': {'name': c.toolName, 'arguments': jsonEncode(c.arguments)},
+                  })
+              .toList(),
+        };
+      }
+      return <String, dynamic>{'role': m.role, 'content': m.content};
+    }).toList();
+  }
+
   @override
   Future<LlmResponse> chat(
     List<LlmMessage> messages, {
@@ -57,7 +81,7 @@ class OpenAiCompatibleLlmAdapter implements LlmProvider {
 
     final body = <String, dynamic>{
       'model': modelName,
-      'messages': messages.map((m) => {'role': m.role, 'content': m.content}).toList(),
+      'messages': buildMessages(messages),
       'temperature': 0.7,
     };
 
@@ -100,7 +124,11 @@ class OpenAiCompatibleLlmAdapter implements LlmProvider {
             final args = fn['arguments'] is String
                 ? jsonDecode(fn['arguments']) as Map<String, dynamic>
                 : (fn['arguments'] as Map<String, dynamic>?) ?? {};
-            toolCalls.add(ToolCallRequest(toolName: fn['name'], arguments: args));
+            toolCalls.add(ToolCallRequest(
+              toolName: fn['name'],
+              arguments: args,
+              id: (call['id'] as String?) ?? 'call_${toolCalls.length}',
+            ));
           }
         }
       }

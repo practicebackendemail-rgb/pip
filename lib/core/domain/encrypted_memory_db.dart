@@ -277,11 +277,31 @@ class EncryptedMemoryDatabase {
     await db.insert('meta', {'key': key, 'value': value}, conflictAlgorithm: ConflictAlgorithm.replace);
   }
 
-  /// Wipes all learned memories and facts for the "Forget Everything" user control
-  Future<void> forgetEverything() async {
+  /// "Forget Everything": tombstones all memories, facts and learned rules so
+  /// other devices converge on the deletion during sync, and clears local
+  /// events and meta. Content is blanked so nothing personal survives in the
+  /// tombstone. [eraseOnThisDeviceOnly] hard-deletes instead, with no tombstones,
+  /// so synced copies elsewhere are untouched (and may sync back).
+  Future<void> forgetEverything({bool eraseOnThisDeviceOnly = false}) async {
     final db = await database;
-    await db.delete('memories');
-    await db.delete('profile_facts');
-    await db.delete('rules', where: 'source = ?', whereArgs: ['learned']);
+    await db.transaction((txn) async {
+      if (eraseOnThisDeviceOnly) {
+        await txn.delete('memories');
+        await txn.delete('profile_facts');
+        await txn.delete('rules', where: 'source = ?', whereArgs: ['learned']);
+      } else {
+        final now = DateTime.now().toIso8601String();
+        await txn.update('memories', {'is_deleted': 1, 'updated_at': now, 'text': '', 'embedding': null});
+        await txn.update('profile_facts', {'is_deleted': 1, 'updated_at': now, 'value': '', 'confidence': 0.0});
+        await txn.update(
+          'rules',
+          {'is_deleted': 1, 'updated_at': now, 'instruction': ''},
+          where: 'source = ?',
+          whereArgs: ['learned'],
+        );
+      }
+      await txn.delete('events');
+      await txn.delete('meta');
+    });
   }
 }

@@ -36,7 +36,8 @@ class GroqLlmAdapter implements LlmProvider {
   }) async {
     final payload = {
       'model': modelName,
-      'messages': messages.map((m) => {'role': m.role, 'content': m.content}).toList(),
+      // Tools are not sent to Groq, so any tool turns use the text fallback.
+      'messages': flattenToolMessages(messages).map((m) => {'role': m.role, 'content': m.content}).toList(),
       'temperature': 0.4,
       if (jsonSchema != null) 'response_format': {'type': 'json_object'},
     };

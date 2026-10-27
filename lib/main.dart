@@ -1,9 +1,13 @@
+import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'core/di/injection.dart';
 import 'core/domain/pip_emotion_state.dart';
 import 'core/services/nightly_reflection_service.dart';
+import 'core/services/pip_audio_coordinator.dart';
+import 'core/services/pip_overlay_bridge.dart';
 import 'core/services/pip_desktop_window_manager.dart';
 import 'core/services/sync/pip_cloud_sync_coordinator.dart';
 import 'core/theme/apple_theme.dart';
@@ -48,12 +52,23 @@ class PersonalAssistantApp extends StatefulWidget {
 class _PersonalAssistantAppState extends State<PersonalAssistantApp>
     with WidgetsBindingObserver {
   late bool _onboardingActive;
+  // One cubit instance shared by the widget tree and the overlay bridge, so the
+  // floating overlay mirrors the same state the app shows.
+  late final PipStageCubit _stageCubit;
+  PipOverlayBridge? _overlayBridge;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _onboardingActive = widget.showOnboarding;
+    _stageCubit = getIt<PipStageCubit>();
+    if (!kIsWeb && Platform.isAndroid) {
+      _overlayBridge = PipOverlayBridge(
+        cubit: _stageCubit,
+        audioCoordinator: getIt<PipAudioCoordinator>(),
+      )..start();
+    }
     // Trigger reflection on initial application startup
     WidgetsBinding.instance.addPostFrameCallback((_) {
       getIt<NightlyReflectionService>().runReflectionIfNeeded();
@@ -63,6 +78,8 @@ class _PersonalAssistantAppState extends State<PersonalAssistantApp>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _overlayBridge?.dispose();
+    _stageCubit.close();
     super.dispose();
   }
 
@@ -85,8 +102,8 @@ class _PersonalAssistantAppState extends State<PersonalAssistantApp>
 
   @override
   Widget build(BuildContext context) {
-    return BlocProvider(
-      create: (_) => getIt<PipStageCubit>(),
+    return BlocProvider.value(
+      value: _stageCubit,
       child: MaterialApp(
         title: 'Pip - Desk Companion',
         debugShowCheckedModeBanner: false,

@@ -28,6 +28,56 @@ class GeminiLlmAdapter implements LlmProvider {
     this.activeModel = 'gemini-1.5-flash',
   });
 
+  /// Maps messages to Gemini contents: tool calls become functionCall parts
+  /// (echoing any thoughtSignature) and results become functionResponse parts.
+  /// Consecutive same-role turns are merged, since Gemini expects parallel
+  /// function responses in a single user turn.
+  static List<Map<String, dynamic>> buildContents(List<LlmMessage> messages) {
+    final contents = <Map<String, dynamic>>[];
+    final apiIds = <String, String>{};
+    for (final m in messages) {
+      final role = m.role == 'assistant' ? 'model' : 'user';
+      final parts = <Map<String, dynamic>>[];
+      if (m.role == 'tool') {
+        Map<String, dynamic> response;
+        try {
+          final decoded = jsonDecode(m.content);
+          response = decoded is Map<String, dynamic> ? decoded : {'result': decoded};
+        } catch (_) {
+          response = {'result': m.content};
+        }
+        final apiId = apiIds[m.toolCallId];
+        parts.add({
+          'functionResponse': {
+            'name': m.toolName ?? 'tool',
+            'id': ?apiId,
+            'response': response,
+          }
+        });
+      } else {
+        if (m.content.isNotEmpty || !m.hasToolCalls) parts.add({'text': m.content});
+        for (final c in m.toolCalls) {
+          final apiId = c.providerMeta?['apiId'] as String?;
+          if (apiId != null && c.id != null) apiIds[c.id!] = apiId;
+          parts.add({
+            'functionCall': {
+              'name': c.toolName,
+              'args': c.arguments,
+              'id': ?apiId,
+            },
+            'thoughtSignature': ?c.providerMeta?['thoughtSignature'],
+          });
+        }
+      }
+      if (contents.isNotEmpty && contents.last['role'] == role) {
+        (contents.last['parts'] as List).addAll(parts);
+      } else {
+        contents.add({'role': role, 'parts': parts});
+      }
+    }
+    return contents;
+  }
+
   @override
   Future<LlmResponse> chat(
     List<LlmMessage> messages, {
@@ -39,15 +89,7 @@ class GeminiLlmAdapter implements LlmProvider {
       throw Exception('Gemini API key is not configured.');
     }
 
-    final contents = messages.map((m) {
-      final role = m.role == 'assistant' ? 'model' : 'user';
-      return {
-        'role': role,
-        'parts': [
-          {'text': m.content}
-        ]
-      };
-    }).toList();
+    final contents = buildContents(messages);
 
     final candidateModels = {
       'gemini-3.8-flash',
@@ -115,7 +157,17 @@ class GeminiLlmAdapter implements LlmProvider {
                   final fn = part['functionCall'] as Map<String, dynamic>;
                   final name = fn['name'] as String;
                   final args = (fn['args'] as Map<String, dynamic>?) ?? {};
-                  toolCalls.add(ToolCallRequest(toolName: name, arguments: args));
+                  final signature = part['thoughtSignature'] as String?;
+                  final apiId = fn['id'] as String?;
+                  toolCalls.add(ToolCallRequest(
+                    toolName: name,
+                    arguments: args,
+                    id: apiId ?? 'local_${toolCalls.length}_$name',
+                    providerMeta: {
+                      'thoughtSignature': ?signature,
+                      'apiId': ?apiId,
+                    },
+                  ));
                 }
               }
             }

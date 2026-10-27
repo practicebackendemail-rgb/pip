@@ -36,9 +36,19 @@ class PipToolCoordinator {
     List<ToolCallRequest> calls,
     List<LlmMessage> messages,
   ) async {
+    // Native calls must be echoed as an assistant turn before their results,
+    // otherwise OpenAI/Anthropic reject the orphaned tool results.
+    final nativeCalls = calls.where((c) => c.isNative).toList();
+    if (nativeCalls.isNotEmpty) {
+      messages.add(LlmMessage.assistantToolCalls(nativeCalls));
+    }
+
     for (final call in calls) {
       final tool = toolRegistry.getTool(call.toolName);
-      if (tool == null) continue;
+      if (tool == null) {
+        _addResult(messages, call, {'error': 'Unknown tool: ${call.toolName}'});
+        continue;
+      }
 
       if (tool.confirmationLevel == ToolConfirmationLevel.level1ConfirmAction ||
           tool.confirmationLevel == ToolConfirmationLevel.level3DangerousDoubleConfirm) {
@@ -56,12 +66,28 @@ class PipToolCoordinator {
       try {
         final result = await tool.execute(call.arguments);
         eventLog.log('tool_success', {'tool': call.toolName, 'result': result});
-        messages.add(LlmMessage(role: 'tool', content: jsonEncode(result)));
+        _addResult(messages, call, result);
       } catch (e) {
         eventLog.log('tool_failure', {'tool': call.toolName, 'error': e.toString()});
-        messages.add(LlmMessage(role: 'tool', content: jsonEncode({'error': e.toString()})));
+        _addResult(messages, call, {'error': e.toString()});
       }
     }
     return const PipToolExecutionResult(requiresConfirmation: false);
+  }
+
+  void _addResult(List<LlmMessage> messages, ToolCallRequest call, Map<String, dynamic> result) {
+    if (call.isNative) {
+      messages.add(LlmMessage.toolResult(
+        toolCallId: call.id!,
+        toolName: call.toolName,
+        content: jsonEncode(result),
+      ));
+    } else {
+      // Call came from structured reply text: answer in text, not a tool role.
+      messages.add(LlmMessage(
+        role: 'user',
+        content: 'Tool result (${call.toolName}): ${jsonEncode(result)}',
+      ));
+    }
   }
 }

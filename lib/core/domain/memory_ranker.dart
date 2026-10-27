@@ -41,12 +41,14 @@ class MemoryRanker {
     if (activeMemories.isEmpty) return [];
 
     // Path 1: Semantic Vector Ranking
+    final vectorHits = <MemoryItem>[];
     if (queryEmbedding.isNotEmpty) {
       final scored = <MapEntry<MemoryItem, double>>[];
       for (final m in activeMemories) {
         if (m.embedding == null || m.embedding!.isEmpty) continue;
         // Strictly require embedding model match to prevent dimension mismatch or semantic distortion
         if (m.embeddingModel != targetEmbeddingModel) continue;
+        if (m.embedding!.length != queryEmbedding.length) continue;
 
         final sim = cosineSimilarity(queryEmbedding, m.embedding!);
         if (sim < minSimilarity) continue;
@@ -55,30 +57,42 @@ class MemoryRanker {
         scored.add(MapEntry(m, totalScore));
       }
 
-      if (scored.isNotEmpty) {
-        scored.sort((a, b) => b.value.compareTo(a.value));
-        return scored.take(limit).map((e) => e.key).toList();
-      }
+      scored.sort((a, b) => b.value.compareTo(a.value));
+      vectorHits.addAll(scored.take(limit).map((e) => e.key));
+      if (vectorHits.length >= limit) return vectorHits;
     }
 
-    // Path 2: Text Overlap & Recency Fallback (used when query vector is empty OR no memories have embeddings)
+    // Path 2: Keyword overlap + importance. Fills whatever the vector path left
+    // short, so memories from other models or without vectors stay reachable.
     final queryWords = (queryText ?? '')
         .toLowerCase()
         .split(RegExp(r'\s+'))
         .where((w) => w.length > 2)
         .toSet();
 
-    final fallbackScored = activeMemories.map((m) {
+    // When topping up vector hits, only add memories that share a query word,
+    // so the fill never pads the prompt with unrelated items.
+    final hitIds = vectorHits.map((m) => m.id).toSet();
+    final requireOverlap = vectorHits.isNotEmpty && queryWords.isNotEmpty;
+    final fallbackScored = <MapEntry<MemoryItem, double>>[];
+    for (final m in activeMemories) {
+      if (hitIds.contains(m.id)) continue;
       double score = m.importance * 0.4;
       if (queryWords.isNotEmpty) {
         final textLower = m.text.toLowerCase();
         final matchCount = queryWords.where((w) => textLower.contains(w)).length;
+        if (requireOverlap && matchCount == 0) continue;
         score += (matchCount / queryWords.length) * 0.6;
+      } else if (vectorHits.isNotEmpty) {
+        continue;
       }
-      return MapEntry(m, score);
-    }).toList();
+      fallbackScored.add(MapEntry(m, score));
+    }
 
     fallbackScored.sort((a, b) => b.value.compareTo(a.value));
-    return fallbackScored.take(limit).map((e) => e.key).toList();
+    return [
+      ...vectorHits,
+      ...fallbackScored.take(limit - vectorHits.length).map((e) => e.key),
+    ];
   }
 }

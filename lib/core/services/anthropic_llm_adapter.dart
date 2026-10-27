@@ -28,6 +28,33 @@ class AnthropicLlmAdapter implements LlmProvider {
     this.modelName = 'claude-3-5-sonnet-20241022',
   });
 
+  /// Maps non-system messages to Messages API format: `tool_use` blocks on the
+  /// assistant turn and `tool_result` blocks in a user turn. Consecutive
+  /// same-role turns are merged so roles alternate as the API requires.
+  static List<Map<String, dynamic>> buildMessages(List<LlmMessage> messages) {
+    final out = <Map<String, dynamic>>[];
+    for (final m in messages) {
+      if (m.role == 'system') continue;
+      final role = m.role == 'assistant' ? 'assistant' : 'user';
+      final blocks = <Map<String, dynamic>>[];
+      if (m.role == 'tool') {
+        blocks.add({'type': 'tool_result', 'tool_use_id': m.toolCallId, 'content': m.content});
+      } else {
+        if (m.content.isNotEmpty) blocks.add({'type': 'text', 'text': m.content});
+        for (final c in m.toolCalls) {
+          blocks.add({'type': 'tool_use', 'id': c.id, 'name': c.toolName, 'input': c.arguments});
+        }
+      }
+      if (blocks.isEmpty) continue;
+      if (out.isNotEmpty && out.last['role'] == role) {
+        (out.last['content'] as List).addAll(blocks);
+      } else {
+        out.add({'role': role, 'content': blocks});
+      }
+    }
+    return out;
+  }
+
   @override
   Future<LlmResponse> chat(
     List<LlmMessage> messages, {
@@ -39,15 +66,8 @@ class AnthropicLlmAdapter implements LlmProvider {
 
     final url = Uri.parse('https://api.anthropic.com/v1/messages');
 
-    String systemPrompt = '';
-    final chatMessages = <Map<String, String>>[];
-    for (final m in messages) {
-      if (m.role == 'system') {
-        systemPrompt = m.content;
-      } else {
-        chatMessages.add({'role': m.role, 'content': m.content});
-      }
-    }
+    final systemPrompt = messages.where((m) => m.role == 'system').map((m) => m.content).join('\n\n');
+    final chatMessages = buildMessages(messages);
 
     final headers = {
       'Content-Type': 'application/json',
@@ -84,7 +104,7 @@ class AnthropicLlmAdapter implements LlmProvider {
             textBuf.write(item['text']);
           } else if (item['type'] == 'tool_use') {
             final args = (item['input'] as Map<String, dynamic>?) ?? {};
-            toolCalls.add(ToolCallRequest(toolName: item['name'], arguments: args));
+            toolCalls.add(ToolCallRequest(toolName: item['name'], arguments: args, id: item['id'] as String?));
           }
         }
       }

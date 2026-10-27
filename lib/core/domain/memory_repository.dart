@@ -35,7 +35,8 @@ abstract class MemoryRepository {
   Future<void> importRule(PipRule rule);
   Future<void> deleteRule(String id);
 
-  Future<void> forgetEverything();
+  /// Tombstones everything (syncs as deletions) unless [eraseOnThisDeviceOnly].
+  Future<void> forgetEverything({bool eraseOnThisDeviceOnly = false});
 }
 
 class SqlCipherMemoryRepository extends ChangeNotifier implements MemoryRepository {
@@ -229,8 +230,8 @@ class SqlCipherMemoryRepository extends ChangeNotifier implements MemoryReposito
   }
 
   @override
-  Future<void> forgetEverything() async {
-    await _db.forgetEverything();
+  Future<void> forgetEverything({bool eraseOnThisDeviceOnly = false}) async {
+    await _db.forgetEverything(eraseOnThisDeviceOnly: eraseOnThisDeviceOnly);
     notifyListeners();
   }
 }
