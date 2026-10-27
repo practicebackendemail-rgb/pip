@@ -66,7 +66,8 @@ class StubMemoryRepository implements MemoryRepository {
     List<double> queryVector, {
     int limit = 5,
     String? queryText,
-    double minSimilarity = 0.3,
+    String targetEmbeddingModel = 'text-embedding-004',
+    double minSimilarity = 0.35,
   }) async => [];
 
   @override
