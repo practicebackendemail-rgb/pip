@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -26,6 +27,7 @@ class ModelProfile {
 /// Registry managing multi-model adapters, custom endpoints, and role routing (Phase 2.5)
 class LlmRegistryService extends ChangeNotifier {
   static const FlutterSecureStorage _secure = FlutterSecureStorage();
+  final Completer<void> _initCompleter = Completer<void>();
   String _activeProviderId = 'gemini';
   String _embeddingProviderId = 'gemini';
   String _geminiKey = '';
@@ -34,6 +36,8 @@ class LlmRegistryService extends ChangeNotifier {
   String _ollamaBaseUrl = 'http://localhost:11434/v1';
 
   String _groqKey = '';
+
+  Future<void> get initialized => _initCompleter.future;
 
   String get activeProviderId => _activeProviderId;
   String get embeddingProviderId => _embeddingProviderId;
@@ -48,20 +52,26 @@ class LlmRegistryService extends ChangeNotifier {
   }
 
   Future<void> _loadSettings() async {
-    final prefs = await SharedPreferences.getInstance();
-    _activeProviderId = prefs.getString('llm_active_provider') ?? 'gemini';
-    _embeddingProviderId = prefs.getString('llm_embedding_provider') ?? 'gemini';
-    _ollamaBaseUrl = prefs.getString('llm_ollama_base') ?? 'http://localhost:11434/v1';
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      _activeProviderId = prefs.getString('llm_active_provider') ?? 'gemini';
+      _embeddingProviderId = prefs.getString('llm_embedding_provider') ?? 'gemini';
+      _ollamaBaseUrl = prefs.getString('llm_ollama_base') ?? 'http://localhost:11434/v1';
 
-    // One-time migration: migrate legacy plain-text keys from SharedPreferences to FlutterSecureStorage
-    await _migrateLegacyKeys(prefs);
+      // One-time migration: migrate legacy plain-text keys from SharedPreferences to FlutterSecureStorage
+      await _migrateLegacyKeys(prefs);
 
-    // Read exclusively from secure storage
-    _geminiKey = (await _secure.read(key: 'key_gemini')) ?? '';
-    _openAiKey = (await _secure.read(key: 'key_openai')) ?? '';
-    _anthropicKey = (await _secure.read(key: 'key_anthropic')) ?? '';
-    _groqKey = (await _secure.read(key: 'key_groq')) ?? '';
-    notifyListeners();
+      // Read exclusively from secure storage
+      _geminiKey = (await _secure.read(key: 'key_gemini')) ?? '';
+      _openAiKey = (await _secure.read(key: 'key_openai')) ?? '';
+      _anthropicKey = (await _secure.read(key: 'key_anthropic')) ?? '';
+      _groqKey = (await _secure.read(key: 'key_groq')) ?? '';
+      notifyListeners();
+    } finally {
+      if (!_initCompleter.isCompleted) {
+        _initCompleter.complete();
+      }
+    }
   }
 
   Future<void> _migrateLegacyKeys(SharedPreferences prefs) async {
@@ -78,8 +88,15 @@ class LlmRegistryService extends ChangeNotifier {
         final existingSecure = await _secure.read(key: entry.value);
         if (existingSecure == null || existingSecure.isEmpty) {
           await _secure.write(key: entry.value, value: legacyVal);
+          // Verify write succeeded before deleting legacy preference
+          final verified = await _secure.read(key: entry.value);
+          if (verified == legacyVal) {
+            await prefs.remove(entry.key);
+          }
+        } else {
+          // Already present in secure storage, safe to remove unencrypted legacy key
+          await prefs.remove(entry.key);
         }
-        await prefs.remove(entry.key);
       }
     }
   }

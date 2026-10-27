@@ -281,14 +281,38 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "0.8.0"
-  device_calendar:
+  device_calendar_plus:
     dependency: "direct main"
     description:
-      name: device_calendar
-      sha256: e5170a5a5a2027135705b099fe5f9b0dce415e27c94997b34e64f28de54e4226
+      name: device_calendar_plus
+      sha256: "31bca1f0055741d5a7b7a8138936af4035f5ace81532ae00a755207899c22d81"
       url: "https://pub.dev"
     source: hosted
-    version: "3.9.0"
+    version: "0.8.1"
+  device_calendar_plus_android:
+    dependency: transitive
+    description:
+      name: device_calendar_plus_android
+      sha256: "39b0bcfe31284a008dbecd9c5139be025164b9a49a5b6259b2dc27c78b7ab971"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.7.2"
+  device_calendar_plus_ios:
+    dependency: transitive
+    description:
+      name: device_calendar_plus_ios
+      sha256: "110c1d0b71171a38978a1ae5464e21ae6a31645f2883044fa52bd740ef7fbadc"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.7.1"
+  device_calendar_plus_platform_interface:
+    dependency: transitive
+    description:
+      name: device_calendar_plus_platform_interface
+      sha256: "474169d6d32654e190c2f1d50c82a0090d475c33c904177f96af831ba46c306e"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.7.0"
   encrypter_plus:
     dependency: transitive
     description:
@@ -1157,14 +1181,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.0.1"
-  sprintf:
-    dependency: transitive
-    description:
-      name: sprintf
-      sha256: ec76d38910b6f1c854ce1353c62d37e7ef82b53dc5ab048c25400d35970776d1
-      url: "https://pub.dev"
-    source: hosted
-    version: "6.0.2"
   sqflite:
     dependency: "direct main"
     description:

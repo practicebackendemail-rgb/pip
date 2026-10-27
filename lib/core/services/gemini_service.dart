@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -7,11 +8,14 @@ import '../../models/task_model.dart';
 
 class GeminiAssistantService extends ChangeNotifier {
   static const FlutterSecureStorage _secure = FlutterSecureStorage();
+  final Completer<void> _initCompleter = Completer<void>();
   String _apiKey = '';
   String _activeModel = 'gemini-1.5-flash';
   AssistantPersona _currentPersona = AssistantPersona.presets.first;
   final List<Map<String, dynamic>> _messages = [];
   List<String> _availableModels = [];
+
+  Future<void> get initialized => _initCompleter.future;
 
   String get apiKey => _apiKey;
   String get activeModel => _activeModel;
@@ -25,30 +29,41 @@ class GeminiAssistantService extends ChangeNotifier {
   }
 
   Future<void> _loadSettings() async {
-    final prefs = await SharedPreferences.getInstance();
-    
-    // One-time migration: check if legacy SharedPreferences has gemini_api_key
-    final legacyKey = prefs.getString('gemini_api_key');
-    if (legacyKey != null && legacyKey.isNotEmpty) {
-      final existingSecure = await _secure.read(key: 'key_gemini');
-      if (existingSecure == null || existingSecure.isEmpty) {
-        await _secure.write(key: 'key_gemini', value: legacyKey);
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      
+      // One-time migration: check if legacy SharedPreferences has gemini_api_key
+      final legacyKey = prefs.getString('gemini_api_key');
+      if (legacyKey != null && legacyKey.isNotEmpty) {
+        final existingSecure = await _secure.read(key: 'key_gemini');
+        if (existingSecure == null || existingSecure.isEmpty) {
+          await _secure.write(key: 'key_gemini', value: legacyKey);
+          final verified = await _secure.read(key: 'key_gemini');
+          if (verified == legacyKey) {
+            await prefs.remove('gemini_api_key');
+          }
+        } else {
+          await prefs.remove('gemini_api_key');
+        }
       }
-      await prefs.remove('gemini_api_key');
-    }
 
-    // Read exclusively from secure storage
-    _apiKey = (await _secure.read(key: 'key_gemini')) ?? '';
-    _activeModel = prefs.getString('gemini_model_name') ?? 'gemini-flash-latest';
-    final personaId = prefs.getString('current_persona_id') ?? 'pip';
-    _currentPersona = AssistantPersona.presets.firstWhere(
-      (p) => p.id == personaId,
-      orElse: () => AssistantPersona.presets.first,
-    );
-    notifyListeners();
-    // Fetch models in background — do NOT await this, it should never block startup
-    if (_apiKey.isNotEmpty) {
-      fetchSupportedModels(); // fire-and-forget
+      // Read exclusively from secure storage
+      _apiKey = (await _secure.read(key: 'key_gemini')) ?? '';
+      _activeModel = prefs.getString('gemini_model_name') ?? 'gemini-flash-latest';
+      final personaId = prefs.getString('current_persona_id') ?? 'pip';
+      _currentPersona = AssistantPersona.presets.firstWhere(
+        (p) => p.id == personaId,
+        orElse: () => AssistantPersona.presets.first,
+      );
+      notifyListeners();
+      // Fetch models in background — do NOT await this, it should never block startup
+      if (_apiKey.isNotEmpty) {
+        fetchSupportedModels(); // fire-and-forget
+      }
+    } finally {
+      if (!_initCompleter.isCompleted) {
+        _initCompleter.complete();
+      }
     }
   }
 
