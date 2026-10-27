@@ -58,7 +58,13 @@ class NightlyReflectionService extends ChangeNotifier {
       }
     }
 
-    final candidates = await _db.getUnprocessedEvents(limit: 200);
+    final List<PipEvent> candidates;
+    try {
+      candidates = await _db.getUnprocessedEvents(limit: 200);
+    } catch (e) {
+      debugPrint('NightlyReflectionService: events unavailable: $e');
+      return;
+    }
     if (candidates.isEmpty) return;
 
     _isReflecting = true;

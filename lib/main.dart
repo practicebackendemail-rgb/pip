@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'app/pip_app_flow.dart';
 import 'core/di/injection.dart';
+import 'core/domain/encrypted_memory_db.dart';
 import 'core/domain/event_log.dart';
 import 'core/domain/memory_repository.dart';
 import 'core/domain/pip_emotion_state.dart';
@@ -82,6 +83,12 @@ class _PersonalAssistantAppState extends State<PersonalAssistantApp>
     // Reflection, then embedding backfill, once the first frame is up
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       await getIt<NightlyReflectionService>().runReflectionIfNeeded();
+      if (EncryptedMemoryDatabase.instance.quarantinedPath != null) {
+        _stageCubit.speak(
+          "I couldn't unlock my old memory on this device, so I started a fresh one. "
+          "If you have a backup, restore it from Settings → Sync and backup.",
+        );
+      }
       _embeddingProviderId = registry.getEmbeddingProvider().id;
       await _backfill.run();
     });

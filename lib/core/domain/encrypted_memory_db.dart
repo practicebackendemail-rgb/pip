@@ -1,5 +1,7 @@
 import 'dart:convert';
+import 'dart:io';
 import 'dart:math' as math;
+import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
@@ -16,14 +18,20 @@ class EncryptedMemoryDatabase {
   static final EncryptedMemoryDatabase instance = EncryptedMemoryDatabase._();
 
   Database? _db;
+  Future<Database>? _opening;
   final FlutterSecureStorage _secureStorage = const FlutterSecureStorage();
+
+  /// Set when an existing database could not be decrypted and was moved
+  /// aside so Pip could start fresh. Holds the path of the kept file.
+  String? quarantinedPath;
 
   EncryptedMemoryDatabase._();
 
-  Future<Database> get database async {
-    if (_db != null) return _db!;
-    _db = await _initDatabase();
-    return _db!;
+  /// Opens once and shares the result. Concurrent callers wait on the same
+  /// attempt instead of each retrying a slow failing open.
+  Future<Database> get database {
+    if (_db != null) return Future.value(_db!);
+    return _opening ??= _initDatabase().then((db) => _db = db).whenComplete(() => _opening = null);
   }
 
   Future<String> _getOrCreateEncryptionKey() async {
@@ -42,13 +50,29 @@ class EncryptedMemoryDatabase {
     final dbPath = p.join(docsDir.path, _dbFileName);
     final key = await _getOrCreateEncryptionKey();
 
-    return await openDatabase(
-      dbPath,
-      password: key,
-      version: MemorySchema.version,
-      onCreate: (db, version) => MemorySchema.create(db),
-      onUpgrade: (db, oldVersion, newVersion) => MemorySchema.upgrade(db, oldVersion),
-    );
+    Future<Database> open() => openDatabase(
+          dbPath,
+          password: key,
+          version: MemorySchema.version,
+          onCreate: (db, version) => MemorySchema.create(db),
+          onUpgrade: (db, oldVersion, newVersion) => MemorySchema.upgrade(db, oldVersion),
+        );
+
+    try {
+      return await open();
+    } on DatabaseException catch (e) {
+      // A file that exists but won't decrypt means the key was lost (for
+      // example the file came back from a device backup but the hardware-bound
+      // key did not). Keep the file, renamed, and start a fresh database
+      // rather than failing every read forever.
+      final file = File(dbPath);
+      if (!e.toString().contains('open_failed') || !await file.exists()) rethrow;
+      final kept = '$dbPath.unreadable-${DateTime.now().millisecondsSinceEpoch}';
+      await file.rename(kept);
+      quarantinedPath = kept;
+      debugPrint('EncryptedMemoryDatabase: could not decrypt existing database; moved to $kept and starting fresh.');
+      return await open();
+    }
   }
 
   // --- CRUD Operations ---
