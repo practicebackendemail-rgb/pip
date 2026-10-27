@@ -17,7 +17,7 @@ lib/
 ├── features/
 │   └── companion/            # Pip desk companion feature
 │       ├── domain/           # PipCharacterBible, PipStructuredReply
-│       └── presentation/     # PipStageCubit, PipStageState, Coordinators, Widgets
+│       └── presentation/     # PipStageCubit, PipChatEngine, PipConversationHistory, Coordinators
 ├── models/                   # Global data models (TaskItem, EmailDigest, etc.)
 ├── screens/                  # Top-level screen views (< 300 LOC, with 2 legacy exemptions)
 └── widgets/                  # Modular, reusable presentation widgets
@@ -57,7 +57,6 @@ All component transitions adhere strictly to the Kowalski Restraint and Gate dir
 Every new or refactored file in the codebase is strictly maintained under 300 lines of code.
 
 ### Registered Legacy Exemptions:
-The following three pre-existing legacy UI screens/services are scheduled for decomposition in a future milestone:
-1. `lib/screens/dashboard_screen.dart` (548 LOC) — Scheduled for extraction into sub-widgets.
-2. `lib/screens/onboarding_setup_screen.dart` (496 LOC) — Scheduled for wizard step decomposition.
-3. `lib/core/services/voice_service.dart` (304 LOC) — Legacy voice engine scheduled for consolidation into `PipAudioCoordinator`.
+Two pre-existing files are over the limit and scheduled for decomposition (the old `dashboard_screen.dart` was unused and has been deleted):
+1. `lib/screens/onboarding_setup_screen.dart` (496 LOC) — Scheduled for wizard step decomposition.
+2. `lib/core/services/voice_service.dart` (304 LOC) — Legacy voice engine scheduled for consolidation into `PipAudioCoordinator`.
