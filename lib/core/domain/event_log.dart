@@ -71,9 +71,8 @@ class EventLogService extends ChangeNotifier {
       _recentCache.addAll(stored);
       notifyListeners();
 
-      // Enforce 30-day retention prune
-      final threshold = DateTime.now().subtract(const Duration(days: 30));
-      await _db.pruneEventsOlderThan(threshold);
+      // Retention: processed after 30 days, unprocessed after 90
+      await _db.pruneEvents();
     } catch (e) {
       debugPrint('EventLogService init error: $e');
     }

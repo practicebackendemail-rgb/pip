@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import '../../../../core/domain/embedding_tags.dart';
 import '../../../../core/domain/llm_provider.dart';
 import '../../../../core/domain/memory_models.dart';
 import '../../../../core/domain/memory_repository.dart';
@@ -30,6 +31,7 @@ class PipMemoryHelper {
       queryVector,
       limit: 3,
       queryText: queryText,
+      targetEmbeddingModel: EmbeddingTags.forProvider(embeddingProvider.id),
     );
   }
 
@@ -48,6 +50,9 @@ class PipMemoryHelper {
       await memoryRepository.recordMemory(
         candidate,
         embedding: candidateVector,
+        embeddingModel: candidateVector != null
+            ? EmbeddingTags.forProvider(embeddingProvider.id)
+            : EmbeddingTags.none,
         importance: 0.8,
       );
     }

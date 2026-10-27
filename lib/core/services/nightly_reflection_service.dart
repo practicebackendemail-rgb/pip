@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import '../domain/encrypted_memory_db.dart';
 import '../domain/event_log.dart';
 import '../domain/llm_provider.dart';
+import '../domain/embedding_tags.dart';
 import '../domain/memory_repository.dart';
 import 'llm_registry_service.dart';
 
@@ -201,6 +202,9 @@ Output pure JSON matching this exact structure:
           await memoryRepository.recordMemory(
             m.trim(),
             embedding: vector,
+            embeddingModel: vector != null
+                ? EmbeddingTags.forProvider(embeddingProvider.id)
+                : EmbeddingTags.none,
             importance: 0.7,
           );
         }

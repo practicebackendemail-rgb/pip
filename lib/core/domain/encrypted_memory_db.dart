@@ -6,6 +6,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:sqflite_sqlcipher/sqflite.dart';
 import 'event_log.dart';
 import 'memory_models.dart';
+import 'memory_schema.dart';
 
 /// Concrete local SQLite store encrypted with SQLCipher via sqflite_sqlcipher.
 /// Stores episodic memories, profile facts, behavioral rules, and raw interaction events.
@@ -44,80 +45,9 @@ class EncryptedMemoryDatabase {
     return await openDatabase(
       dbPath,
       password: key,
-      version: 2,
-      onCreate: (db, version) async {
-        await db.execute('''
-          CREATE TABLE events (
-            id TEXT PRIMARY KEY,
-            type TEXT NOT NULL,
-            payload_json TEXT NOT NULL,
-            ts TEXT NOT NULL,
-            device_id TEXT NOT NULL,
-            processed_at TEXT
-          )
-        ''');
-
-        await db.execute('''
-          CREATE TABLE memories (
-            id TEXT PRIMARY KEY,
-            text TEXT NOT NULL,
-            embedding TEXT,
-            embedding_model TEXT NOT NULL,
-            importance REAL NOT NULL,
-            created_at TEXT NOT NULL,
-            last_used_at TEXT NOT NULL,
-            updated_at TEXT NOT NULL,
-            is_deleted INTEGER NOT NULL DEFAULT 0
-          )
-        ''');
-
-        await db.execute('''
-          CREATE TABLE profile_facts (
-            key TEXT PRIMARY KEY,
-            value TEXT NOT NULL,
-            confidence REAL NOT NULL,
-            evidence_count INTEGER NOT NULL,
-            updated_at TEXT NOT NULL,
-            last_reinforced_at TEXT NOT NULL,
-            is_deleted INTEGER NOT NULL DEFAULT 0
-          )
-        ''');
-
-        await db.execute('''
-          CREATE TABLE rules (
-            id TEXT PRIMARY KEY,
-            scope TEXT NOT NULL,
-            instruction TEXT NOT NULL,
-            source TEXT NOT NULL,
-            active INTEGER NOT NULL,
-            updated_at TEXT NOT NULL,
-            is_deleted INTEGER NOT NULL DEFAULT 0
-          )
-        ''');
-
-        await db.execute('''
-          CREATE TABLE meta (
-            key TEXT PRIMARY KEY,
-            value TEXT NOT NULL
-          )
-        ''');
-      },
-      onUpgrade: (db, oldVersion, newVersion) async {
-        if (oldVersion < 2) {
-          await db.execute('ALTER TABLE events ADD COLUMN processed_at TEXT');
-          await db.execute('ALTER TABLE memories ADD COLUMN updated_at TEXT');
-          await db.execute('ALTER TABLE memories ADD COLUMN is_deleted INTEGER NOT NULL DEFAULT 0');
-          await db.execute('UPDATE memories SET updated_at = last_used_at WHERE updated_at IS NULL');
-          await db.execute('ALTER TABLE profile_facts ADD COLUMN last_reinforced_at TEXT');
-          await db.execute('ALTER TABLE profile_facts ADD COLUMN is_deleted INTEGER NOT NULL DEFAULT 0');
-          await db.execute('UPDATE profile_facts SET last_reinforced_at = updated_at WHERE last_reinforced_at IS NULL');
-          await db.execute('ALTER TABLE rules ADD COLUMN updated_at TEXT');
-          await db.execute('ALTER TABLE rules ADD COLUMN is_deleted INTEGER NOT NULL DEFAULT 0');
-          final nowIso = DateTime.now().toIso8601String();
-          await db.execute("UPDATE rules SET updated_at = '$nowIso' WHERE updated_at IS NULL");
-          await db.execute('CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT NOT NULL)');
-        }
-      },
+      version: MemorySchema.version,
+      onCreate: (db, version) => MemorySchema.create(db),
+      onUpgrade: (db, oldVersion, newVersion) => MemorySchema.upgrade(db, oldVersion),
     );
   }
 
@@ -187,9 +117,19 @@ class EncryptedMemoryDatabase {
     await batch.commit(noResult: true);
   }
 
-  Future<void> pruneEventsOlderThan(DateTime threshold) async {
+  /// Retention: processed events go after 30 days, unprocessed ones after 90,
+  /// so reflection never loses events it has not read yet.
+  Future<void> pruneEvents({DateTime? now}) async {
     final db = await database;
-    await db.delete('events', where: 'ts < ?', whereArgs: [threshold.toIso8601String()]);
+    final t = now ?? DateTime.now();
+    await db.delete(
+      'events',
+      where: '(processed_at IS NOT NULL AND ts < ?) OR ts < ?',
+      whereArgs: [
+        t.subtract(const Duration(days: 30)).toIso8601String(),
+        t.subtract(const Duration(days: 90)).toIso8601String(),
+      ],
+    );
   }
 
   Future<void> upsertMemory(MemoryItem memory) async {

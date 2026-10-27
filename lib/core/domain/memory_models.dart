@@ -1,3 +1,5 @@
+import 'embedding_tags.dart';
+
 /// Represents an episodic memory with vector embeddings, recency, and soft-delete tombstone
 class MemoryItem {
   final String id;
@@ -14,7 +16,7 @@ class MemoryItem {
     required this.id,
     required this.text,
     this.embedding,
-    this.embeddingModel = 'text-embedding-004',
+    this.embeddingModel = EmbeddingTags.none,
     this.importance = 0.5,
     DateTime? createdAt,
     DateTime? lastUsedAt,
@@ -69,7 +71,7 @@ class MemoryItem {
       id: map['id'] as String,
       text: map['text'] as String,
       embedding: emb,
-      embeddingModel: (map['embedding_model'] as String?) ?? 'text-embedding-004',
+      embeddingModel: (map['embedding_model'] as String?) ?? EmbeddingTags.none,
       importance: (map['importance'] as num?)?.toDouble() ?? 0.5,
       createdAt: DateTime.parse(map['created_at'] as String),
       lastUsedAt: DateTime.parse(map['last_used_at'] as String),

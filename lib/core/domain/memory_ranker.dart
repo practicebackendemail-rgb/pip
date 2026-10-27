@@ -1,5 +1,10 @@
 import 'dart:math' as math;
+import 'embedding_tags.dart';
 import 'memory_models.dart';
+
+/// Lowercased, whitespace-collapsed text used for duplicate detection.
+String normalizeMemoryText(String text) =>
+    text.trim().toLowerCase().replaceAll(RegExp(r'\s+'), ' ');
 
 /// Pure Dart utility for memory scoring and ranking.
 /// Keeps memory scoring completely testable without requiring SQLite or SQLCipher.
@@ -33,7 +38,7 @@ class MemoryRanker {
     required List<MemoryItem> memories,
     required List<double> queryEmbedding,
     String? queryText,
-    String targetEmbeddingModel = 'text-embedding-004',
+    String targetEmbeddingModel = EmbeddingTags.none,
     int limit = 5,
     double minSimilarity = 0.35,
   }) {

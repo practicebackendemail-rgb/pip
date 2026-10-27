@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'encrypted_memory_db.dart';
 import 'event_log.dart';
 import 'memory_models.dart';
+import 'embedding_tags.dart';
 import 'memory_ranker.dart';
 
 /// Repository interface handling Pip's long-term episodic memory,
@@ -9,13 +10,14 @@ import 'memory_ranker.dart';
 abstract class MemoryRepository {
   Future<void> logEvent(PipEvent event);
   Future<List<PipEvent>> getEvents({int limit = 200, DateTime? since});
-  Future<void> pruneEvents(DateTime threshold);
-  Future<void> recordMemory(String text, {List<double>? embedding, String embeddingModel = 'text-embedding-004', double importance = 0.5});
+  /// Applies event retention (processed: 30 days, unprocessed: 90 days).
+  Future<void> pruneEvents();
+  Future<void> recordMemory(String text, {List<double>? embedding, String embeddingModel = EmbeddingTags.none, double importance = 0.5});
   Future<List<MemoryItem>> searchMemories(
     List<double> queryEmbedding, {
     int limit = 5,
     String? queryText,
-    String targetEmbeddingModel = 'text-embedding-004',
+    String targetEmbeddingModel = EmbeddingTags.none,
     double minSimilarity = 0.35,
   });
   Future<List<MemoryItem>> getAllMemoriesIncludingDeleted();
@@ -53,17 +55,22 @@ class SqlCipherMemoryRepository extends ChangeNotifier implements MemoryReposito
   }
 
   @override
-  Future<void> pruneEvents(DateTime threshold) async {
-    await _db.pruneEventsOlderThan(threshold);
+  Future<void> pruneEvents() async {
+    await _db.pruneEvents();
   }
 
   @override
   Future<void> recordMemory(
     String text, {
     List<double>? embedding,
-    String embeddingModel = 'text-embedding-004',
+    String embeddingModel = EmbeddingTags.none,
     double importance = 0.5,
   }) async {
+    final normalized = normalizeMemoryText(text);
+    if (normalized.isEmpty) return;
+    final existing = await _db.getAllMemories(includeDeleted: false);
+    if (existing.any((m) => normalizeMemoryText(m.text) == normalized)) return;
+
     final now = DateTime.now();
     final memory = MemoryItem(
       id: 'mem_${now.millisecondsSinceEpoch}',
@@ -84,7 +91,7 @@ class SqlCipherMemoryRepository extends ChangeNotifier implements MemoryReposito
     List<double> queryEmbedding, {
     int limit = 5,
     String? queryText,
-    String targetEmbeddingModel = 'text-embedding-004',
+    String targetEmbeddingModel = EmbeddingTags.none,
     double minSimilarity = 0.35,
   }) async {
     final all = await _db.getAllMemories(includeDeleted: false);
