@@ -1,10 +1,12 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../models/task_model.dart';
 
 class GeminiAssistantService extends ChangeNotifier {
+  static const FlutterSecureStorage _secure = FlutterSecureStorage();
   String _apiKey = '';
   String _activeModel = 'gemini-1.5-flash';
   AssistantPersona _currentPersona = AssistantPersona.presets.first;
@@ -24,7 +26,19 @@ class GeminiAssistantService extends ChangeNotifier {
 
   Future<void> _loadSettings() async {
     final prefs = await SharedPreferences.getInstance();
-    _apiKey = prefs.getString('gemini_api_key') ?? '';
+    
+    // One-time migration: check if legacy SharedPreferences has gemini_api_key
+    final legacyKey = prefs.getString('gemini_api_key');
+    if (legacyKey != null && legacyKey.isNotEmpty) {
+      final existingSecure = await _secure.read(key: 'key_gemini');
+      if (existingSecure == null || existingSecure.isEmpty) {
+        await _secure.write(key: 'key_gemini', value: legacyKey);
+      }
+      await prefs.remove('gemini_api_key');
+    }
+
+    // Read exclusively from secure storage
+    _apiKey = (await _secure.read(key: 'key_gemini')) ?? '';
     _activeModel = prefs.getString('gemini_model_name') ?? 'gemini-flash-latest';
     final personaId = prefs.getString('current_persona_id') ?? 'pip';
     _currentPersona = AssistantPersona.presets.firstWhere(
@@ -40,8 +54,9 @@ class GeminiAssistantService extends ChangeNotifier {
 
   Future<void> updateApiKey(String key) async {
     _apiKey = key.trim();
+    await _secure.write(key: 'key_gemini', value: _apiKey);
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('gemini_api_key', _apiKey);
+    await prefs.remove('gemini_api_key');
     if (_apiKey.isNotEmpty) {
       await fetchSupportedModels();
     }
@@ -59,8 +74,13 @@ class GeminiAssistantService extends ChangeNotifier {
   Future<List<String>> fetchSupportedModels() async {
     if (_apiKey.isEmpty) return [];
     try {
-      final url = Uri.parse('https://generativelanguage.googleapis.com/v1beta/models?key=$_apiKey');
-      final res = await http.get(url);
+      final url = Uri.parse('https://generativelanguage.googleapis.com/v1beta/models');
+      final res = await http.get(
+        url,
+        headers: {
+          'x-goog-api-key': _apiKey,
+        },
+      );
       if (res.statusCode == 200) {
         final data = jsonDecode(res.body);
         final List<dynamic> modelsList = data['models'] ?? [];
@@ -123,7 +143,7 @@ class GeminiAssistantService extends ChangeNotifier {
     for (final modelId in candidateModels) {
       try {
         final url = Uri.parse(
-          'https://generativelanguage.googleapis.com/v1beta/models/$modelId:generateContent?key=$_apiKey',
+          'https://generativelanguage.googleapis.com/v1beta/models/$modelId:generateContent',
         );
 
         final systemPrompt = '''
@@ -165,7 +185,10 @@ CRITICAL: Even if the user uses informal language like "scratch that off", "done
 
         final response = await http.post(
           url,
-          headers: {'Content-Type': 'application/json'},
+          headers: {
+            'Content-Type': 'application/json',
+            'x-goog-api-key': _apiKey,
+          },
           body: jsonEncode(body),
         ).timeout(const Duration(seconds: 12), onTimeout: () {
           throw Exception('Request timed out after 12s');

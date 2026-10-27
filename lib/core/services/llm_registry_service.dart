@@ -53,11 +53,35 @@ class LlmRegistryService extends ChangeNotifier {
     _embeddingProviderId = prefs.getString('llm_embedding_provider') ?? 'gemini';
     _ollamaBaseUrl = prefs.getString('llm_ollama_base') ?? 'http://localhost:11434/v1';
 
-    _geminiKey = (await _secure.read(key: 'key_gemini')) ?? prefs.getString('gemini_api_key') ?? '';
-    _openAiKey = (await _secure.read(key: 'key_openai')) ?? prefs.getString('openai_api_key') ?? '';
-    _anthropicKey = (await _secure.read(key: 'key_anthropic')) ?? prefs.getString('anthropic_api_key') ?? '';
-    _groqKey = (await _secure.read(key: 'key_groq')) ?? prefs.getString('groq_api_key') ?? '';
+    // One-time migration: migrate legacy plain-text keys from SharedPreferences to FlutterSecureStorage
+    await _migrateLegacyKeys(prefs);
+
+    // Read exclusively from secure storage
+    _geminiKey = (await _secure.read(key: 'key_gemini')) ?? '';
+    _openAiKey = (await _secure.read(key: 'key_openai')) ?? '';
+    _anthropicKey = (await _secure.read(key: 'key_anthropic')) ?? '';
+    _groqKey = (await _secure.read(key: 'key_groq')) ?? '';
     notifyListeners();
+  }
+
+  Future<void> _migrateLegacyKeys(SharedPreferences prefs) async {
+    const keyMap = {
+      'gemini_api_key': 'key_gemini',
+      'openai_api_key': 'key_openai',
+      'anthropic_api_key': 'key_anthropic',
+      'groq_api_key': 'key_groq',
+    };
+
+    for (final entry in keyMap.entries) {
+      final legacyVal = prefs.getString(entry.key);
+      if (legacyVal != null && legacyVal.isNotEmpty) {
+        final existingSecure = await _secure.read(key: entry.value);
+        if (existingSecure == null || existingSecure.isEmpty) {
+          await _secure.write(key: entry.value, value: legacyVal);
+        }
+        await prefs.remove(entry.key);
+      }
+    }
   }
 
   Future<void> setActiveProvider(String providerId) async {
@@ -75,23 +99,18 @@ class LlmRegistryService extends ChangeNotifier {
   }
 
   Future<void> setKey(String providerId, String key) async {
-    final prefs = await SharedPreferences.getInstance();
     if (providerId == 'gemini') {
       _geminiKey = key;
       await _secure.write(key: 'key_gemini', value: key);
-      await prefs.setString('gemini_api_key', key);
     } else if (providerId == 'openai') {
       _openAiKey = key;
       await _secure.write(key: 'key_openai', value: key);
-      await prefs.setString('openai_api_key', key);
     } else if (providerId == 'anthropic') {
       _anthropicKey = key;
       await _secure.write(key: 'key_anthropic', value: key);
-      await prefs.setString('anthropic_api_key', key);
     } else if (providerId == 'groq') {
       _groqKey = key;
       await _secure.write(key: 'key_groq', value: key);
-      await prefs.setString('groq_api_key', key);
     }
     notifyListeners();
   }
