@@ -1,1 +1,0 @@
-{"status": "ollama_offline", "distilled": "lib/core/domain/encrypted_memory_db.dart:96:  Future<void> logEvent(PipEvent event) async {", "files_touched": ["lib/core/domain/encrypted_memory_db.dart:96"]}

@@ -1,1 +1,0 @@
-{"status": "ollama_offline", "distilled": "lib/bootstrap.dart:26:  SystemChrome.setSystemUIOverlayStyle(\nlib/bootstrap.dart:27:    const SystemUiOverlayStyle(\nlib/core/theme/app_theme.dart:38:    final overlayStyle = SystemUiOverlayStyle(", "files_touched": ["lib/bootstrap.dart:26", "lib/bootstrap.dart:27", "lib/core/theme/app_theme.dart:38"]}

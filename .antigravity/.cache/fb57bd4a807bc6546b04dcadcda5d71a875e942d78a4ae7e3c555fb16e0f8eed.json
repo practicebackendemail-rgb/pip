@@ -1,1 +1,0 @@
-{"status": "ollama_offline", "distilled": "lib/core/di/core_module.dart:52:  PipToolRegistry pipToolRegistry(\nlib/core/di/core_module.dart:56:    final registry = PipToolRegistry();", "files_touched": ["lib/core/di/core_module.dart:52", "lib/core/di/core_module.dart:56"]}

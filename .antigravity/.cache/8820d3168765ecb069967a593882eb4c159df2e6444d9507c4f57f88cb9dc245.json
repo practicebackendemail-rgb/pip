@@ -1,1 +1,0 @@
-{"status": "ollama_offline", "distilled": "lib/features/companion/presentation/cubit/pip_stage_cubit.dart:165:      final relevantMemories = await memoryRepository.searchMemories(const [], limit: 3);", "files_touched": ["lib/features/companion/presentation/cubit/pip_stage_cubit.dart:165"]}

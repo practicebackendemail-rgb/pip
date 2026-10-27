@@ -1,1 +1,0 @@
-{"status": "ollama_offline", "distilled": "lib/widgets/pip_params.dart:3:enum PipMood { idle, listening, thinking, talking, happy, unsure, sleepy, sleeping, excited, sad, laughing, blinking }", "files_touched": ["lib/widgets/pip_params.dart:3"]}

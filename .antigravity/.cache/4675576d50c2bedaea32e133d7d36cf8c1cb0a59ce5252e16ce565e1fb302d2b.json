@@ -1,1 +1,0 @@
-{"status": "ollama_offline", "distilled": "lib/core/services/pip_audio_coordinator.dart:17:class PipAudioCoordinator extends ChangeNotifier {\nlib/core/services/pip_audio_coordinator.dart:36:  PipAudioCoordinator() {", "files_touched": ["lib/core/services/pip_audio_coordinator.dart:17", "lib/core/services/pip_audio_coordinator.dart:36"]}

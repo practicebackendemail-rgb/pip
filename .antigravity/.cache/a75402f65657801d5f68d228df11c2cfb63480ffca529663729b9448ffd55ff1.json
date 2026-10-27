@@ -1,1 +1,0 @@
-{"status": "ollama_offline", "distilled": "lib/core/services/tools/email_tools.dart:85:class SendEmailTool extends PipTool {\nlib/core/services/tools/email_tools.dart:88:  const SendEmailTool({required this.emailService})", "files_touched": ["lib/core/services/tools/email_tools.dart:85", "lib/core/services/tools/email_tools.dart:88"]}

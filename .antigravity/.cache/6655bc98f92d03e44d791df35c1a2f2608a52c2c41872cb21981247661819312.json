@@ -1,1 +1,0 @@
-{"status": "ollama_offline", "distilled": "lib/core/domain/event_log.dart:39:class EventLogService extends ChangeNotifier {", "files_touched": ["lib/core/domain/event_log.dart:39"]}
