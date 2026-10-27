@@ -18,12 +18,23 @@ abstract class MemoryRepository {
     String targetEmbeddingModel = 'text-embedding-004',
     double minSimilarity = 0.35,
   });
+  Future<List<MemoryItem>> getAllMemoriesIncludingDeleted();
+  Future<void> importMemory(MemoryItem memory);
+  Future<void> deleteMemory(String id);
+
   Future<List<ProfileFact>> getProfile();
+  Future<List<ProfileFact>> getAllFactsIncludingDeleted();
   Future<void> upsertFact(String key, String value, {double confidence = 0.6});
   Future<void> setFactConfidence(String key, double confidence);
+  Future<void> importFact(ProfileFact fact);
   Future<void> deleteFact(String key);
+
   Future<List<PipRule>> getActiveRules();
+  Future<List<PipRule>> getAllRulesIncludingDeleted();
   Future<void> addRule(String instruction, {String scope = 'general', String source = 'user_explicit'});
+  Future<void> importRule(PipRule rule);
+  Future<void> deleteRule(String id);
+
   Future<void> forgetEverything();
 }
 
@@ -52,14 +63,18 @@ class SqlCipherMemoryRepository extends ChangeNotifier implements MemoryReposito
     String embeddingModel = 'text-embedding-004',
     double importance = 0.5,
   }) async {
-    final item = MemoryItem(
-      id: 'mem_${DateTime.now().millisecondsSinceEpoch}',
+    final now = DateTime.now();
+    final memory = MemoryItem(
+      id: 'mem_${now.millisecondsSinceEpoch}',
       text: text,
       embedding: embedding,
       embeddingModel: embeddingModel,
       importance: importance,
+      createdAt: now,
+      lastUsedAt: now,
+      updatedAt: now,
     );
-    await _db.upsertMemory(item);
+    await _db.upsertMemory(memory);
     notifyListeners();
   }
 
@@ -83,20 +98,62 @@ class SqlCipherMemoryRepository extends ChangeNotifier implements MemoryReposito
   }
 
   @override
+  Future<List<MemoryItem>> getAllMemoriesIncludingDeleted() async {
+    return await _db.getAllMemories(includeDeleted: true);
+  }
+
+  @override
+  Future<void> importMemory(MemoryItem memory) async {
+    final existing = await _db.getAllMemories(includeDeleted: true);
+    final match = existing.cast<MemoryItem?>().firstWhere((m) => m?.id == memory.id, orElse: () => null);
+    if (match == null || memory.updatedAt.isAfter(match.updatedAt)) {
+      await _db.upsertMemory(memory);
+      notifyListeners();
+    }
+  }
+
+  @override
+  Future<void> deleteMemory(String id) async {
+    await _db.deleteMemory(id);
+    notifyListeners();
+  }
+
+  @override
   Future<List<ProfileFact>> getProfile() async {
     return await _db.getAllFacts(includeDeleted: false);
   }
 
   @override
+  Future<List<ProfileFact>> getAllFactsIncludingDeleted() async {
+    return await _db.getAllFacts(includeDeleted: true);
+  }
+
+  @override
   Future<void> upsertFact(String key, String value, {double confidence = 0.6}) async {
-    final existing = (await _db.getAllFacts(includeDeleted: false)).where((f) => f.key == key).toList();
-    final evidence = existing.isNotEmpty ? existing.first.evidenceCount + 1 : 1;
     final now = DateTime.now();
+    final existingList = await _db.getAllFacts(includeDeleted: false);
+    final existing = existingList.cast<ProfileFact?>().firstWhere((f) => f?.key == key, orElse: () => null);
+
+    if (existing != null && existing.value == value) {
+      final updatedConfidence = (existing.confidence + 0.05).clamp(0.0, 0.95);
+      final reinforced = ProfileFact(
+        key: key,
+        value: value,
+        confidence: updatedConfidence,
+        evidenceCount: existing.evidenceCount + 1,
+        updatedAt: now,
+        lastReinforcedAt: now,
+      );
+      await _db.upsertFact(reinforced);
+      notifyListeners();
+      return;
+    }
+
     final newFact = ProfileFact(
       key: key,
       value: value,
       confidence: confidence,
-      evidenceCount: evidence,
+      evidenceCount: 1,
       updatedAt: now,
       lastReinforcedAt: now,
     );
@@ -111,6 +168,16 @@ class SqlCipherMemoryRepository extends ChangeNotifier implements MemoryReposito
   }
 
   @override
+  Future<void> importFact(ProfileFact fact) async {
+    final existingList = await _db.getAllFacts(includeDeleted: true);
+    final existing = existingList.cast<ProfileFact?>().firstWhere((f) => f?.key == fact.key, orElse: () => null);
+    if (existing == null || fact.updatedAt.isAfter(existing.updatedAt)) {
+      await _db.upsertFact(fact);
+      notifyListeners();
+    }
+  }
+
+  @override
   Future<void> deleteFact(String key) async {
     await _db.deleteFact(key);
     notifyListeners();
@@ -119,6 +186,11 @@ class SqlCipherMemoryRepository extends ChangeNotifier implements MemoryReposito
   @override
   Future<List<PipRule>> getActiveRules() async {
     return await _db.getAllRules(includeDeleted: false);
+  }
+
+  @override
+  Future<List<PipRule>> getAllRulesIncludingDeleted() async {
+    return await _db.getAllRules(includeDeleted: true);
   }
 
   @override
@@ -137,6 +209,22 @@ class SqlCipherMemoryRepository extends ChangeNotifier implements MemoryReposito
       updatedAt: DateTime.now(),
     );
     await _db.upsertRule(rule);
+    notifyListeners();
+  }
+
+  @override
+  Future<void> importRule(PipRule rule) async {
+    final existingList = await _db.getAllRules(includeDeleted: true);
+    final existing = existingList.cast<PipRule?>().firstWhere((r) => r?.id == rule.id, orElse: () => null);
+    if (existing == null || rule.updatedAt.isAfter(existing.updatedAt)) {
+      await _db.upsertRule(rule);
+      notifyListeners();
+    }
+  }
+
+  @override
+  Future<void> deleteRule(String id) async {
+    await _db.deleteRule(id);
     notifyListeners();
   }
 

@@ -5,12 +5,13 @@ import '../../core/di/injection.dart';
 import '../../core/domain/memory_models.dart';
 import '../../core/domain/memory_repository.dart';
 import '../../core/services/nightly_reflection_service.dart';
+import '../../core/services/sync/pip_cloud_sync_coordinator.dart';
 import '../../core/theme/apple_theme.dart';
 import '../../widgets/glass_container.dart';
 
 /// "What Pip Knows About Me" Transparency Screen (Section 8.5)
 /// Lets the user inspect, edit, and delete learned profile facts, episodic memories,
-/// and behavioral rules, plus a nuclear "Forget Everything" button for total trust.
+/// and behavioral rules, plus nuclear "Forget Everything" and immediate "Sync Now".
 class WhatPipKnowsScreen extends StatefulWidget {
   final MemoryRepository memoryRepository;
 
@@ -60,7 +61,7 @@ class _WhatPipKnowsScreenState extends State<WhatPipKnowsScreen> {
       builder: (ctx) => CupertinoAlertDialog(
         title: const Text("Forget Everything?"),
         content: const Text(
-          "This will permanently erase all learned memories, profile facts, and behavioral habits Pip has acquired about you. This action is irreversible.",
+          "This will write tombstones for all learned facts, rules, and episodic memories across all synced devices. This cannot be undone.",
         ),
         actions: [
           CupertinoDialogAction(
@@ -69,13 +70,13 @@ class _WhatPipKnowsScreenState extends State<WhatPipKnowsScreen> {
           ),
           CupertinoDialogAction(
             isDestructiveAction: true,
+            child: const Text("Erase All"),
             onPressed: () async {
               Navigator.pop(ctx);
               await widget.memoryRepository.forgetEverything();
               HapticFeedback.heavyImpact();
-              await _loadData();
+              _loadData();
             },
-            child: const Text("Forget All"),
           ),
         ],
       ),
@@ -85,7 +86,7 @@ class _WhatPipKnowsScreenState extends State<WhatPipKnowsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF0D0E12),
+      backgroundColor: const Color(0xFF0A0A0C),
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -103,6 +104,8 @@ class _WhatPipKnowsScreenState extends State<WhatPipKnowsScreen> {
           : ListView(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
               children: [
+                _buildSyncStatusBar(),
+                const SizedBox(height: 12),
                 _buildReflectionStatusBar(),
                 const SizedBox(height: 12),
                 _buildSectionHeader("Learned Profile Facts", _facts.length),
@@ -119,6 +122,55 @@ class _WhatPipKnowsScreenState extends State<WhatPipKnowsScreen> {
                 const SizedBox(height: 40),
               ],
             ),
+    );
+  }
+
+  Widget _buildSyncStatusBar() {
+    final sync = getIt<PipCloudSyncCoordinator>();
+    return ListenableBuilder(
+      listenable: sync,
+      builder: (context, _) {
+        final last = sync.lastSyncTime;
+        final timeStr = last != null
+            ? '${last.month}/${last.day} at ${last.hour.toString().padLeft(2, '0')}:${last.minute.toString().padLeft(2, '0')}'
+            : 'Never';
+
+        return Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.05),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Colors.white12),
+          ),
+          child: Row(
+            children: [
+              const Icon(CupertinoIcons.cloud_upload, color: AppleTheme.accentTeal, size: 18),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text("Cloud Sync: Last synced $timeStr", style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppleTheme.textPrimary)),
+                    if (sync.lastError != null)
+                      Text("Error: ${sync.lastError}", style: const TextStyle(fontSize: 10, color: AppleTheme.accentRed)),
+                  ],
+                ),
+              ),
+              TextButton(
+                onPressed: sync.isSyncing
+                    ? null
+                    : () async {
+                        final success = await sync.syncNow(force: true);
+                        if (success) _loadData();
+                      },
+                child: sync.isSyncing
+                    ? const CupertinoActivityIndicator(radius: 8)
+                    : const Text("Sync Now", style: TextStyle(fontSize: 12, color: AppleTheme.accentTeal, fontWeight: FontWeight.bold)),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 
@@ -140,20 +192,12 @@ class _WhatPipKnowsScreenState extends State<WhatPipKnowsScreen> {
           ),
           child: Row(
             children: [
-              Icon(
-                reflectionService.isReflecting
-                    ? CupertinoIcons.arrow_2_circlepath
-                    : CupertinoIcons.sparkles,
-                size: 16,
-                color: AppleTheme.accentTeal,
-              ),
-              const SizedBox(width: 8),
+              const Icon(CupertinoIcons.sparkles, color: AppleTheme.accentOrange, size: 18),
+              const SizedBox(width: 10),
               Expanded(
                 child: Text(
-                  reflectionService.isReflecting
-                      ? 'Reflecting and learning from interactions...'
-                      : 'Last reflection: $timeStr',
-                  style: const TextStyle(fontSize: 12, color: Colors.white70),
+                  "Nightly Reflection: Last synthesized $timeStr",
+                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppleTheme.textPrimary),
                 ),
               ),
             ],
@@ -164,77 +208,91 @@ class _WhatPipKnowsScreenState extends State<WhatPipKnowsScreen> {
   }
 
   Widget _buildSectionHeader(String title, int count) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppleTheme.textPrimary)),
+        Text("$count items", style: const TextStyle(fontSize: 12, color: AppleTheme.textTertiary)),
+      ],
+    );
+  }
+
+  Widget _buildEmptyState(String message) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
+      padding: const EdgeInsets.symmetric(vertical: 12),
+      child: Text(message, style: const TextStyle(color: AppleTheme.textTertiary, fontStyle: FontStyle.italic, fontSize: 13)),
+    );
+  }
+
+  Widget _buildFactTile(ProfileFact fact) {
+    return GlassContainer(
+      margin: const EdgeInsets.symmetric(vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      borderRadius: 12,
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(title, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: Colors.white)),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-            decoration: BoxDecoration(color: Colors.white10, borderRadius: BorderRadius.circular(10)),
-            child: Text('$count', style: const TextStyle(fontSize: 12, color: AppleTheme.textSecondary)),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(fact.key, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppleTheme.textSecondary)),
+                const SizedBox(height: 2),
+                Text(fact.value, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppleTheme.textPrimary)),
+              ],
+            ),
+          ),
+          IconButton(
+            icon: const Icon(CupertinoIcons.xmark_circle, color: AppleTheme.textTertiary, size: 18),
+            onPressed: () async {
+              await widget.memoryRepository.deleteFact(fact.key);
+              _loadData();
+            },
           ),
         ],
       ),
     );
   }
 
-  Widget _buildEmptyState(String msg) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Text(msg, style: const TextStyle(fontSize: 13, color: AppleTheme.textTertiary, fontStyle: FontStyle.italic)),
-    );
-  }
-
-  Widget _buildFactTile(ProfileFact f) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: GlassContainer(
-        borderRadius: 14,
-        padding: const EdgeInsets.all(12),
-        child: Row(
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(f.key, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppleTheme.textPrimary)),
-                  const SizedBox(height: 3),
-                  Text(f.value, style: const TextStyle(fontSize: 12.5, color: AppleTheme.textSecondary)),
-                ],
-              ),
-            ),
-            Text("${(f.confidence * 100).toInt()}% conf", style: const TextStyle(fontSize: 11, color: Color(0xFF6FBF73))),
-          ],
-        ),
+  Widget _buildMemoryTile(MemoryItem memory) {
+    return GlassContainer(
+      margin: const EdgeInsets.symmetric(vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      borderRadius: 12,
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(memory.text, style: const TextStyle(fontSize: 13, color: AppleTheme.textPrimary)),
+          ),
+          IconButton(
+            icon: const Icon(CupertinoIcons.xmark_circle, color: AppleTheme.textTertiary, size: 18),
+            onPressed: () async {
+              await widget.memoryRepository.deleteMemory(memory.id);
+              _loadData();
+            },
+          ),
+        ],
       ),
     );
   }
 
-  Widget _buildMemoryTile(MemoryItem m) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: GlassContainer(
-        borderRadius: 14,
-        padding: const EdgeInsets.all(12),
-        child: Text(m.text, style: const TextStyle(fontSize: 12.5, color: AppleTheme.textSecondary)),
-      ),
-    );
-  }
-
-  Widget _buildRuleTile(PipRule r) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: GlassContainer(
-        borderRadius: 14,
-        padding: const EdgeInsets.all(12),
-        child: Row(
-          children: [
-            Expanded(child: Text(r.instruction, style: const TextStyle(fontSize: 12.5, color: AppleTheme.textPrimary))),
-            Text(r.scope, style: const TextStyle(fontSize: 11, color: AppleTheme.accentBlue)),
-          ],
-        ),
+  Widget _buildRuleTile(PipRule rule) {
+    return GlassContainer(
+      margin: const EdgeInsets.symmetric(vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      borderRadius: 12,
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(rule.instruction, style: const TextStyle(fontSize: 13, color: AppleTheme.textPrimary)),
+          ),
+          IconButton(
+            icon: const Icon(CupertinoIcons.xmark_circle, color: AppleTheme.textTertiary, size: 18),
+            onPressed: () async {
+              await widget.memoryRepository.deleteRule(rule.id);
+              _loadData();
+            },
+          ),
+        ],
       ),
     );
   }

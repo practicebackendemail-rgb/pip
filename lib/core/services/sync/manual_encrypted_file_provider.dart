@@ -1,10 +1,12 @@
 import 'dart:io';
+import 'package:file_picker/file_picker.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
+import 'package:share_plus/share_plus.dart';
 import '../../domain/sync_provider.dart';
 
 /// Manual file-based provider exporting and importing encrypted sync snapshots
-/// via local file storage, share sheets, or file managers without requiring OAuth.
+/// via local file storage, system share sheets, and platform file pickers.
 class ManualEncryptedFileProvider implements ISyncProvider {
   @override
   SyncProviderType get type => SyncProviderType.manualEncryptedFile;
@@ -62,5 +64,36 @@ class ManualEncryptedFileProvider implements ISyncProvider {
     final dir = await _getSyncDir();
     final file = File(p.join(dir.path, fileName));
     await file.writeAsString(encryptedContent);
+  }
+
+  /// Exports an encrypted snapshot file to the system share sheet
+  Future<void> exportViaShareSheet(String fileName) async {
+    final dir = await _getSyncDir();
+    final file = File(p.join(dir.path, fileName));
+    if (await file.exists()) {
+      await SharePlus.instance.share(
+        ShareParams(
+          text: file.readAsStringSync(),
+          subject: 'Pip Encrypted Backup ($fileName)',
+        ),
+      );
+    }
+  }
+
+  /// Imports an encrypted snapshot file from user selection via FilePicker
+  Future<String?> importViaFilePicker() async {
+    final files = await FilePicker.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: ['enc', 'json'],
+    );
+    if (files.isNotEmpty && files.first.path != null) {
+      final file = File(files.first.path!);
+      final content = await file.readAsString();
+      final dir = await _getSyncDir();
+      final destination = File(p.join(dir.path, p.basename(file.path)));
+      await destination.writeAsString(content);
+      return destination.path;
+    }
+    return null;
   }
 }

@@ -8,20 +8,22 @@ import '../../domain/sync_provider.dart';
 import 'manual_encrypted_file_provider.dart';
 import 'pip_cloud_crypto_service.dart';
 
-/// Two-way sync coordinator managing user-owned encrypted backups.
-/// Synchronizes profile facts, behavioral rules, and episodic memories with vector embeddings.
+/// Two-way sync coordinator managing user-owned encrypted backups with Last-Writer-Wins.
 class PipCloudSyncCoordinator extends ChangeNotifier {
   static const String _deviceIdKey = 'pip_sync_device_id';
+  static const String _lastSyncTsKey = 'pip_last_sync_timestamp';
   final MemoryRepository memoryRepository;
   final FlutterSecureStorage _secureStorage;
 
   ISyncProvider _activeProvider;
   bool _isSyncing = false;
   DateTime? _lastSyncTime;
+  String? _lastError;
   String _deviceId = 'device_main';
 
   bool get isSyncing => _isSyncing;
   DateTime? get lastSyncTime => _lastSyncTime;
+  String? get lastError => _lastError;
   ISyncProvider get activeProvider => _activeProvider;
   String get deviceId => _deviceId;
 
@@ -43,6 +45,11 @@ class PipCloudSyncCoordinator extends ChangeNotifier {
       _deviceId = 'dev_${DateTime.now().millisecondsSinceEpoch % 100000}';
       await prefs.setString(_deviceIdKey, _deviceId);
     }
+
+    final lastSyncMillis = prefs.getInt(_lastSyncTsKey);
+    if (lastSyncMillis != null) {
+      _lastSyncTime = DateTime.fromMillisecondsSinceEpoch(lastSyncMillis);
+    }
   }
 
   void setProvider(ISyncProvider provider) {
@@ -56,41 +63,51 @@ class PipCloudSyncCoordinator extends ChangeNotifier {
 
   Future<void> setSyncPassphrase(String passphrase) async {
     await _secureStorage.write(key: 'pip_sync_passphrase', value: passphrase);
+    notifyListeners();
   }
 
-  /// Two-way sync: pulls remote changes, merges by ID/timestamp, and pushes local snapshot.
-  Future<bool> syncNow() async {
+  /// Two-way sync: pulls remote changes, merges with LWW, and pushes local snapshot.
+  Future<bool> syncNow({bool force = false}) async {
     if (_isSyncing) return false;
     final pass = await getSyncPassphrase();
     if (pass == null || pass.isEmpty) return false;
 
+    // Cooldown check (1 hour) unless forced
+    if (!force && _lastSyncTime != null) {
+      final elapsed = DateTime.now().difference(_lastSyncTime!);
+      if (elapsed.inHours < 1) {
+        return false;
+      }
+    }
+
     _isSyncing = true;
+    _lastError = null;
     notifyListeners();
 
     try {
       // 1. Pull and merge remote snapshots
       final remoteFiles = await _activeProvider.listFiles();
       for (final file in remoteFiles) {
-        // Skip files uploaded by this device
-        if (file.name.contains('$_deviceId.enc')) continue;
+        // Skip files created by this exact device
+        if (file.name.contains('-$_deviceId.enc')) continue;
 
         try {
           final encrypted = await _activeProvider.pull(file.id);
           final decrypted = await PipCloudCryptoService.decryptPayload(encrypted, pass);
           final map = jsonDecode(decrypted) as Map<String, dynamic>;
-          await _mergeRemoteSnapshot(map);
+          await mergeRemoteSnapshot(map);
         } catch (e) {
           debugPrint('Sync merge error for ${file.name}: $e');
         }
       }
 
-      // 2. Export local snapshot and push
-      final facts = await memoryRepository.getProfile();
-      final rules = await memoryRepository.getActiveRules();
-      final memories = await memoryRepository.searchMemories(const [], limit: 100);
+      // 2. Export local snapshot v3 with all items including tombstones
+      final facts = await memoryRepository.getAllFactsIncludingDeleted();
+      final rules = await memoryRepository.getAllRulesIncludingDeleted();
+      final memories = await memoryRepository.getAllMemoriesIncludingDeleted();
 
       final snapshot = {
-        'version': 2,
+        'version': 3,
         'device_id': _deviceId,
         'timestamp': DateTime.now().toIso8601String(),
         'facts': facts.map((f) => f.toMap()).toList(),
@@ -104,42 +121,46 @@ class PipCloudSyncCoordinator extends ChangeNotifier {
       await _activeProvider.push(fileName, encrypted);
 
       _lastSyncTime = DateTime.now();
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setInt(_lastSyncTsKey, _lastSyncTime!.millisecondsSinceEpoch);
+
       _isSyncing = false;
       notifyListeners();
       return true;
     } catch (e) {
-      debugPrint('Cloud sync error: $e');
+      _lastError = e.toString();
       _isSyncing = false;
       notifyListeners();
       return false;
     }
   }
 
-  Future<void> _mergeRemoteSnapshot(Map<String, dynamic> data) async {
-    // 1. Merge facts (Last-Writer-Wins)
+  /// Merges remote items using Last-Writer-Wins based on updatedAt timestamps and tombstones
+  Future<void> mergeRemoteSnapshot(Map<String, dynamic> data) async {
+    // 1. Merge facts with LWW
     final remoteFacts = data['facts'] as List?;
     if (remoteFacts != null) {
       for (final r in remoteFacts) {
         final f = ProfileFact.fromMap(r as Map<String, dynamic>);
-        await memoryRepository.upsertFact(f.key, f.value, confidence: f.confidence);
+        await memoryRepository.importFact(f);
       }
     }
 
-    // 2. Merge rules
+    // 2. Merge rules with LWW
     final remoteRules = data['rules'] as List?;
     if (remoteRules != null) {
       for (final r in remoteRules) {
         final rule = PipRule.fromMap(r as Map<String, dynamic>);
-        await memoryRepository.addRule(rule.instruction, scope: rule.scope, source: rule.source);
+        await memoryRepository.importRule(rule);
       }
     }
 
-    // 3. Union memories by ID
+    // 3. Merge memories with LWW
     final remoteMemories = data['memories'] as List?;
     if (remoteMemories != null) {
       for (final m in remoteMemories) {
         final mem = MemoryItem.fromMap(m as Map<String, dynamic>);
-        await memoryRepository.recordMemory(mem.text, embedding: mem.embedding, importance: mem.importance);
+        await memoryRepository.importMemory(mem);
       }
     }
   }

@@ -3,17 +3,20 @@ import 'dart:math';
 import 'package:cryptography/cryptography.dart';
 
 /// Versioned, authenticated encryption envelope for user-owned cloud backups.
-/// Upgrades basic SHA-256 derivation to PBKDF2 with SHA-256, 100,000 iterations, and random 128-bit salt.
+/// Upgrades basic derivation to PBKDF2 with SHA-256 and hardens against iteration bombing.
 class PipCloudCryptoService {
   PipCloudCryptoService._();
 
   static final AesGcm _cipher = AesGcm.with256bits();
+  static const int minIterations = 10000;
+  static const int maxIterations = 500000;
+  static const int defaultIterations = 100000;
 
   /// Derives a 256-bit AES key using PBKDF2-HMAC-SHA256 with random/provided salt.
   static Future<SecretKey> deriveKeyPbkdf2({
     required String passphrase,
     required List<int> salt,
-    int iterations = 100000,
+    int iterations = defaultIterations,
   }) async {
     final pbkdf2 = Pbkdf2(
       macAlgorithm: Hmac.sha256(),
@@ -41,7 +44,7 @@ class PipCloudCryptoService {
     final envelope = {
       'envelope_version': 2,
       'kdf': 'pbkdf2_hmac_sha256',
-      'iterations': 100000,
+      'iterations': defaultIterations,
       'salt': base64Encode(salt),
       'nonce': base64Encode(secretBox.nonce),
       'cipher': base64Encode(secretBox.cipherText),
@@ -52,6 +55,7 @@ class PipCloudCryptoService {
   }
 
   /// Decrypts payload supporting backward compatibility with version 1 (SHA-256 legacy).
+  /// Caps iteration counts to prevent iteration-bomb DoS attacks.
   static Future<String> decryptPayload(String encryptedJson, String passphrase) async {
     final map = jsonDecode(encryptedJson) as Map<String, dynamic>;
     final version = map['envelope_version'] as int? ?? 1;
@@ -64,10 +68,12 @@ class PipCloudCryptoService {
     SecretKey key;
     if (version == 2) {
       final salt = base64Decode(map['salt'] as String);
-      final iterations = (map['iterations'] as int?) ?? 100000;
-      key = await deriveKeyPbkdf2(passphrase: passphrase, salt: salt, iterations: iterations);
+      final rawIterations = (map['iterations'] as int?) ?? defaultIterations;
+      if (rawIterations < minIterations || rawIterations > maxIterations) {
+        throw FormatException('Invalid or hazardous iteration count in envelope: $rawIterations');
+      }
+      key = await deriveKeyPbkdf2(passphrase: passphrase, salt: salt, iterations: rawIterations);
     } else {
-      // Version 1 legacy fallback
       final hash = await Sha256().hash(utf8.encode(passphrase));
       key = SecretKey(hash.bytes);
     }

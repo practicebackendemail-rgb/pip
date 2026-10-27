@@ -5,6 +5,7 @@ import 'core/di/injection.dart';
 import 'core/domain/pip_emotion_state.dart';
 import 'core/services/nightly_reflection_service.dart';
 import 'core/services/pip_desktop_window_manager.dart';
+import 'core/services/sync/pip_cloud_sync_coordinator.dart';
 import 'core/theme/apple_theme.dart';
 import 'features/companion/presentation/cubit/pip_stage_cubit.dart';
 import 'screens/companion_stage_screen.dart';
@@ -53,7 +54,7 @@ class _PersonalAssistantAppState extends State<PersonalAssistantApp>
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _onboardingActive = widget.showOnboarding;
-    // Step 2: Trigger reflection on initial application startup
+    // Trigger reflection on initial application startup
     WidgetsBinding.instance.addPostFrameCallback((_) {
       getIt<NightlyReflectionService>().runReflectionIfNeeded();
     });
@@ -68,9 +69,11 @@ class _PersonalAssistantAppState extends State<PersonalAssistantApp>
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
-      // Step 2 & Phase 3: Trigger reflection check and update emotion drift on app resume
+      // Trigger reflection check and update emotion drift on app resume
       getIt<PipEmotionState>().evaluateTimeDrift();
       getIt<NightlyReflectionService>().runReflectionIfNeeded();
+      // Phase 6: Sync cloud/local state on app resume (cooldown managed internally)
+      getIt<PipCloudSyncCoordinator>().syncNow();
     }
   }
 

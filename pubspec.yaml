@@ -46,6 +46,8 @@ dependencies:
   device_calendar_plus: ^0.8.1
   timezone: ^0.11.2
   flutter_timezone: ^5.1.1
+  share_plus: ^13.3.1
+  file_picker: ^13.3.0
 
 dev_dependencies:
   flutter_test:
