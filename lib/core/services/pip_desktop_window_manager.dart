@@ -3,19 +3,13 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:hotkey_manager/hotkey_manager.dart';
+import 'package:launch_at_startup/launch_at_startup.dart';
 import 'package:screen_retriever/screen_retriever.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:tray_manager/tray_manager.dart';
 import 'package:window_manager/window_manager.dart';
 
 /// Service responsible for managing Pip's desktop window modes on Windows.
-/// Features:
-/// 1. Taskbar skipping in Pet Mode (`setSkipTaskbar(true)`).
-/// 2. Click-through toggle via `setIgnoreMouseEvents`.
-/// 3. Dragging & position persistence across multi-monitor setups via `screen_retriever`.
-/// 4. System tray management with quick status toggles.
-/// 5. Global hotkey toggling (`Ctrl+Shift+P`).
-/// 6. Startup launch toggle via `launch_at_startup`.
 class PipDesktopWindowManager with TrayListener, WindowListener {
   PipDesktopWindowManager._();
   static final PipDesktopWindowManager instance = PipDesktopWindowManager._();
@@ -30,6 +24,7 @@ class PipDesktopWindowManager with TrayListener, WindowListener {
 
   static const String _prefPosX = 'pip_window_pos_x';
   static const String _prefPosY = 'pip_window_pos_y';
+  static const String _prefLaunchStartup = 'pip_launch_at_startup';
 
   static Future<void> initialize() async {
     if (kIsWeb || !Platform.isWindows) return;
@@ -37,6 +32,23 @@ class PipDesktopWindowManager with TrayListener, WindowListener {
     try {
       await windowManager.ensureInitialized();
       await hotKeyManager.unregisterAll();
+
+      // Launch at startup setup
+      try {
+        LaunchAtStartup.instance.setup(
+          appName: 'Pip Desk Companion',
+          appPath: Platform.resolvedExecutable,
+        );
+        final prefs = await SharedPreferences.getInstance();
+        final shouldLaunch = prefs.getBool(_prefLaunchStartup) ?? false;
+        if (shouldLaunch) {
+          await LaunchAtStartup.instance.enable();
+        } else {
+          await LaunchAtStartup.instance.disable();
+        }
+      } catch (e) {
+        debugPrint('Launch at startup initialization warning: $e');
+      }
 
       const windowOptions = WindowOptions(
         size: Size(1180, 780),
@@ -51,9 +63,13 @@ class PipDesktopWindowManager with TrayListener, WindowListener {
         await windowManager.focus();
       });
 
-      // Register Tray Menu
-      trayManager.addListener(instance);
-      await _setupTray();
+      // Register Tray Menu with non-fatal safety catch
+      try {
+        trayManager.addListener(instance);
+        await _setupTray();
+      } catch (e) {
+        debugPrint('System tray setup warning (non-fatal): $e');
+      }
 
       // Register Global HotKey (Ctrl + Shift + P)
       final hotKey = HotKey(
@@ -86,7 +102,26 @@ class PipDesktopWindowManager with TrayListener, WindowListener {
     }
   }
 
-  /// Transforms the window into an ambient floating desktop pet
+  static Future<void> setLaunchAtStartup(bool enable) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_prefLaunchStartup, enable);
+    if (kIsWeb || !Platform.isWindows) return;
+    try {
+      if (enable) {
+        await LaunchAtStartup.instance.enable();
+      } else {
+        await LaunchAtStartup.instance.disable();
+      }
+    } catch (e) {
+      debugPrint('Error toggling launch at startup: $e');
+    }
+  }
+
+  static Future<bool> isLaunchAtStartupEnabled() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(_prefLaunchStartup) ?? false;
+  }
+
   static Future<void> enterAmbientPetMode() async {
     if (kIsWeb || !Platform.isWindows) return;
 
@@ -95,11 +130,10 @@ class PipDesktopWindowManager with TrayListener, WindowListener {
       await windowManager.setTitleBarStyle(TitleBarStyle.hidden);
       await windowManager.setSize(const Size(300, 340));
       await windowManager.setAlwaysOnTop(true);
-      await windowManager.setSkipTaskbar(true); // Step 8.1: Hide from taskbar
+      await windowManager.setSkipTaskbar(true);
       await windowManager.setBackgroundColor(Colors.transparent);
       await windowManager.setHasShadow(false);
 
-      // Step 8.3: Restore saved position with screen bounds verification
       await _restorePositionOrAlign();
     } catch (e) {
       debugPrint("Error entering ambient pet mode: $e");
@@ -112,7 +146,6 @@ class PipDesktopWindowManager with TrayListener, WindowListener {
     final y = prefs.getDouble(_prefPosY);
 
     if (x != null && y != null) {
-      // Verify saved point falls within an active monitor
       final displays = await screenRetriever.getAllDisplays();
       bool isVisible = false;
       for (final d in displays) {
@@ -133,7 +166,6 @@ class PipDesktopWindowManager with TrayListener, WindowListener {
     await windowManager.setAlignment(Alignment.bottomRight);
   }
 
-  /// Saves current position to persistent storage
   static Future<void> saveCurrentPosition() async {
     if (kIsWeb || !Platform.isWindows) return;
     try {
@@ -146,7 +178,6 @@ class PipDesktopWindowManager with TrayListener, WindowListener {
     }
   }
 
-  /// Restores standard application window mode
   static Future<void> exitAmbientPetMode() async {
     if (kIsWeb || !Platform.isWindows) return;
 
@@ -163,7 +194,6 @@ class PipDesktopWindowManager with TrayListener, WindowListener {
     }
   }
 
-  /// Toggles Click-Through state (Step 8.2)
   static Future<void> setClickThrough(bool enable) async {
     if (kIsWeb || !Platform.isWindows || !_isPetModeActive) return;
     _isClickThroughActive = enable;
