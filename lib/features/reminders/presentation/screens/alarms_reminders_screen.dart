@@ -4,7 +4,10 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/routes/app_routes.dart';
 import '../../../../core/theme/app_motion_tokens.dart';
 import '../../../../core/theme/pip_theme.dart';
-import '../../../../widgets/companion/mini_pip_assistant.dart';
+import '../../../../core/localization/l10n_extension.dart';
+import '../../../activity/domain/activity_entry.dart';
+import '../../../activity/presentation/activity_cubit.dart';
+import '../../../companion/presentation/widgets/pip_ledge.dart';
 import '../../data/scheduled_reminder_repository.dart';
 import '../../domain/reminder_repository.dart';
 import '../cubit/reminders_cubit.dart';
@@ -24,10 +27,7 @@ class AlarmsRemindersScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return BlocProvider(
-      create: (_) => RemindersCubit(repository)..load(),
-      child: const _RemindersView(),
-    );
+    return BlocProvider(create: (_) => RemindersCubit(repository)..load(), child: const _RemindersView());
   }
 }
 
@@ -48,41 +48,56 @@ class _RemindersView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     return Scaffold(
-      appBar: AppBar(title: const Text('Alarms & reminders')),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _add(context),
         icon: const Icon(Icons.add_alarm),
         label: const Text('New'),
       ),
-      body: SafeArea(
-        child: BlocConsumer<RemindersCubit, RemindersState>(
-          listenWhen: (a, b) => b.error != null && a.error != b.error,
-          listener: (context, state) =>
-              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(state.error!))),
-          builder: (context, state) {
-            final cubit = context.read<RemindersCubit>();
-            return ListView(
-              padding: const EdgeInsets.fromLTRB(PipSpace.lg, PipSpace.sm, PipSpace.lg, 96),
-              children: [
-                const MiniPipAssistant(
-                  hint: 'Ask Pip: "wake me at 6:30 on weekdays"',
-                  screenContext: 'User is on the Alarms & reminders screen',
-                ),
-                if (!state.isLoading && !state.permissions.allGranted)
-                  ReminderPermissionBanner(permissions: state.permissions, onFix: cubit.requestPermissions),
-                AnimatedSwitcher(
-                  duration: AppMotionTokens.resolveDuration(context, AppMotionTokens.medium),
-                  switchInCurve: AppMotionTokens.easeOut,
-                  child: _body(context, state),
-                ),
-              ],
-            );
-          },
-        ),
+      body: Column(
+        children: [
+          PipLedge(
+            idleLine: l10n.ledgeAlarmsIdle,
+            suggestions: [
+              PipSuggestion(l10n.chipWakeMe, l10n.queryWakeMe),
+              PipSuggestion(l10n.chipRemindSoon, l10n.queryRemindSoon),
+              PipSuggestion(l10n.chipWhatAlarms, l10n.queryWhatAlarms),
+            ],
+          ),
+          // Pip just set or cancelled something: show it straight away.
+          Expanded(
+            child: BlocListener<ActivityCubit, ActivityState>(
+              listenWhen: (a, b) => a.latest != b.latest && _isSchedule(b.latest),
+              listener: (context, _) => context.read<RemindersCubit>().load(),
+              child: BlocConsumer<RemindersCubit, RemindersState>(
+                listenWhen: (a, b) => b.error != null && a.error != b.error,
+                listener: (context, state) =>
+                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(state.error!))),
+                builder: (context, state) {
+                  final cubit = context.read<RemindersCubit>();
+                  return ListView(
+                    padding: const EdgeInsets.fromLTRB(PipSpace.lg, PipSpace.sm, PipSpace.lg, 96),
+                    children: [
+                      if (!state.isLoading && !state.permissions.allGranted)
+                        ReminderPermissionBanner(permissions: state.permissions, onFix: cubit.requestPermissions),
+                      AnimatedSwitcher(
+                        duration: AppMotionTokens.resolveDuration(context, AppMotionTokens.medium),
+                        switchInCurve: AppMotionTokens.easeOut,
+                        child: _body(context, state),
+                      ),
+                    ],
+                  );
+                },
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
+
+  static bool _isSchedule(ActivityEntry? e) => e?.kind == ActivityKind.alarm || e?.kind == ActivityKind.reminder;
 
   Widget _body(BuildContext context, RemindersState state) {
     if (state.isLoading) {

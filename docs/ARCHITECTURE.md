@@ -143,3 +143,19 @@ The global `redirect` sends users to Welcome until `OnboardingGate` says setup i
 await VoiceSettings.instance.update(engine: SpeechEngine.geminiAudio, conversationMode: true);
 audio.startActiveListening(onQuery: cubit.handleQuery);
 ```
+
+## 8. How-To: Pip inside every screen (no chat UI)
+
+Pip is a character, not a chatbot: there are no message threads anywhere.
+
+- **Shell** (`lib/app/pip_app_shell.dart`): `StatefulShellRoute` tabs Pip, Tasks, Alarms, Activity, with one `PipCommandBar` and the `ActionResultCard`. Switching tabs sets `PipScreenContext.current`, which prefixes commands so "move it to 7" is understood on that screen.
+- **Ledge** (`PipLedge`): mini Pip, its one current line, screen-specific `PipSuggestion` chips, and any pending confirmation. Use it at the top of any screen Pip works in.
+- **Feedback**: `HeardCaption` shows what Pip is hearing and fades; Pip answers in its single speech line.
+- **Activity** (`lib/features/activity/`): tools report results through `ActivityRecorder`; `describeToolActivity` turns actions (not lookups) into entries; `ActivityCubit` keeps the log and undoes via `ToolActivityUndoer` (alarms/reminders by id, tasks by id).
+
+```dart
+PipLedge(
+  idleLine: context.l10n.ledgeTasksIdle,
+  suggestions: [PipSuggestion(context.l10n.chipPlanDay, context.l10n.queryPlanDay)],
+);
+```

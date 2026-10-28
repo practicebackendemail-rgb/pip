@@ -1,9 +1,7 @@
 import 'package:equatable/equatable.dart';
 import '../../../../widgets/pip_params.dart';
-import '../../../../widgets/companion/pip_overlay_and_dock_area.dart';
 
 class PipStageState extends Equatable {
-  final CompanionOverlay overlay;
   final PipMood currentMood;
   final String statusText;
   final String speechText;
@@ -16,7 +14,6 @@ class PipStageState extends Equatable {
   final bool isSilentCompanionMode;
 
   const PipStageState({
-    this.overlay = CompanionOverlay.none,
     this.currentMood = PipMood.idle,
     this.statusText = "Tap Pip or ask a question",
     this.speechText = "",
@@ -30,7 +27,6 @@ class PipStageState extends Equatable {
   });
 
   PipStageState copyWith({
-    CompanionOverlay? overlay,
     PipMood? currentMood,
     String? statusText,
     String? speechText,
@@ -44,7 +40,6 @@ class PipStageState extends Equatable {
     bool? isSilentCompanionMode,
   }) {
     return PipStageState(
-      overlay: overlay ?? this.overlay,
       currentMood: currentMood ?? this.currentMood,
       statusText: statusText ?? this.statusText,
       speechText: speechText ?? this.speechText,
@@ -61,7 +56,6 @@ class PipStageState extends Equatable {
 
   @override
   List<Object?> get props => [
-        overlay,
         currentMood,
         statusText,
         speechText,

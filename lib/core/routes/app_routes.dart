@@ -8,6 +8,10 @@ abstract final class AppRoutes {
   static const String restoredParam = 'restored';
 
   static const String home = '/home';
+  static const String briefingSegment = 'briefing';
+  static const String briefing = '$home/$briefingSegment';
+  static const String tasks = '/tasks';
+  static const String activity = '/activity';
   static const String alarms = '/alarms';
   static const String memory = '/memory';
 

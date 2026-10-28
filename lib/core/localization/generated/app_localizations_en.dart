@@ -160,4 +160,141 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get voiceHeardNothing =>
       'I didn\'t catch anything. Try again a little louder.';
+
+  @override
+  String get navActivity => 'Activity';
+
+  @override
+  String get commandHint => 'Ask Pip…';
+
+  @override
+  String get commandHintTasks => 'Ask about tasks…';
+
+  @override
+  String get commandHintAlarms => 'Ask about alarms…';
+
+  @override
+  String get commandHintBriefing => 'Ask about your day…';
+
+  @override
+  String get commandSend => 'Send to Pip';
+
+  @override
+  String get commandMicStart => 'Talk to Pip';
+
+  @override
+  String get commandMicStop => 'Stop listening';
+
+  @override
+  String get pipThinking => 'Thinking…';
+
+  @override
+  String get ledgeTasksIdle => 'Want me to plan your day, or add something?';
+
+  @override
+  String get ledgeAlarmsIdle =>
+      'I can set, move or cancel any of these. Just say it.';
+
+  @override
+  String get ledgeBriefingIdle =>
+      'Here\'s your day. Ask me about anything in it.';
+
+  @override
+  String get ledgeActivityIdle =>
+      'Everything I\'ve done for you. Undo anything that wasn\'t right.';
+
+  @override
+  String get chipBriefMe => 'Brief me';
+
+  @override
+  String get chipPlanDay => 'Plan my day';
+
+  @override
+  String get chipWhatsNext => 'What\'s next?';
+
+  @override
+  String get chipMoveOverdue => 'Move overdue to tomorrow';
+
+  @override
+  String get chipWakeMe => 'Wake me tomorrow at 7';
+
+  @override
+  String get chipRemindSoon => 'Remind me in 20 min';
+
+  @override
+  String get chipWhatAlarms => 'What alarms do I have?';
+
+  @override
+  String get chipReadIt => 'Read it to me';
+
+  @override
+  String get chipWhatsUrgent => 'What\'s urgent?';
+
+  @override
+  String get queryPlanDay => 'Plan my day using my open tasks.';
+
+  @override
+  String get queryWhatsNext => 'What should I do next?';
+
+  @override
+  String get queryMoveOverdue => 'Move my overdue tasks to tomorrow.';
+
+  @override
+  String get queryWakeMe => 'Wake me tomorrow at 7am.';
+
+  @override
+  String get queryRemindSoon => 'Remind me in 20 minutes.';
+
+  @override
+  String get queryWhatAlarms => 'What alarms and reminders do I have?';
+
+  @override
+  String get queryReadIt => 'Read my briefing to me.';
+
+  @override
+  String get queryWhatsUrgent => 'What in my day is urgent?';
+
+  @override
+  String get undo => 'Undo';
+
+  @override
+  String get undone => 'Undone';
+
+  @override
+  String get undoFailed => 'That can\'t be undone any more.';
+
+  @override
+  String get activityTitle => 'What Pip did';
+
+  @override
+  String get activityEmpty =>
+      'Nothing yet. Ask Pip to set an alarm, add a task or brief you.';
+
+  @override
+  String get activityToday => 'Today';
+
+  @override
+  String get activityYesterday => 'Yesterday';
+
+  @override
+  String get tasksTitle => 'Objectives';
+
+  @override
+  String get tasksEmpty =>
+      'Nothing on your list. Ask Pip, or tap + to add one.';
+
+  @override
+  String get tasksAdd => 'Add task';
+
+  @override
+  String get tasksOverdue => 'overdue';
+
+  @override
+  String get briefingTitle => 'Your day';
+
+  @override
+  String get briefingEmpty => 'Ask Pip to brief you to see your day here.';
+
+  @override
+  String get briefingRefresh => 'Refresh briefing';
 }

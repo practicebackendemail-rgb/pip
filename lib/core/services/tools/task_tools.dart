@@ -28,7 +28,7 @@ class CreateTaskTool extends PipTool {
       dueDate = DateTime.tryParse(args['due_date'].toString());
     }
 
-    taskProvider.addTask(
+    final id = taskProvider.addTask(
       title: title,
       description: desc,
       project: project,
@@ -37,6 +37,7 @@ class CreateTaskTool extends PipTool {
 
     return {
       'status': 'success',
+      'id': id,
       'title': title,
       'project': project,
       'created_at': DateTime.now().toIso8601String(),

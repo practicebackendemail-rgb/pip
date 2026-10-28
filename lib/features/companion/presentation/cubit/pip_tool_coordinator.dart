@@ -1,4 +1,5 @@
 import 'dart:convert';
+import '../../../activity/presentation/activity_cubit.dart';
 import '../../../../core/domain/event_log.dart';
 import '../../../../core/domain/llm_provider.dart';
 import '../../../../core/domain/pip_tool.dart';
@@ -68,6 +69,7 @@ class PipToolCoordinator {
       try {
         final result = await tool.execute(call.arguments);
         eventLog.log(result.containsKey('error') ? 'tool_failure' : 'tool_success', {'tool': call.toolName});
+        ActivityRecorder.tool(call.toolName, call.arguments, result);
         _addResult(messages, call, result);
       } catch (e) {
         eventLog.log('tool_failure', {'tool': call.toolName, 'exception': e.runtimeType.toString()});

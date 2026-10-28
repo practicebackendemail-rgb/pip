@@ -24,6 +24,8 @@ import 'core/services/pip_notification_service.dart';
 import 'core/services/sync/pip_cloud_sync_coordinator.dart';
 import 'core/services/task_provider.dart';
 import 'core/theme/pip_theme.dart';
+import 'features/activity/data/activity_data.dart';
+import 'features/activity/presentation/activity_cubit.dart';
 import 'features/companion/presentation/cubit/pip_stage_cubit.dart';
 import 'features/voice/voice_wiring.dart';
 import 'widgets/companion/pip_overlay_widget.dart';
@@ -73,6 +75,8 @@ class _PersonalAssistantAppState extends State<PersonalAssistantApp>
   String? _embeddingProviderId;
   Timer? _driftTimer;
   StreamSubscription<int>? _notificationTaps;
+  late final ActivityCubit _activity =
+      ActivityCubit(repository: const PrefsActivityRepository(), undoer: ToolActivityUndoer(getIt<TaskProvider>()))..load();
   late final VoiceWiring _voice = VoiceWiring(audio: getIt(), voice: getIt(), llm: getIt());
 
   @override
@@ -141,6 +145,7 @@ class _PersonalAssistantAppState extends State<PersonalAssistantApp>
     _voice.dispose();
     _overlayBridge?.dispose();
     _stageCubit.close();
+    _activity.close();
     super.dispose();
   }
 
@@ -160,8 +165,11 @@ class _PersonalAssistantAppState extends State<PersonalAssistantApp>
 
   @override
   Widget build(BuildContext context) {
-    return BlocProvider.value(
-      value: _stageCubit,
+    return MultiBlocProvider(
+      providers: [
+        BlocProvider.value(value: _stageCubit),
+        BlocProvider.value(value: _activity),
+      ],
       child: MaterialApp.router(
         onGenerateTitle: (context) => context.l10n.appTitle,
         debugShowCheckedModeBanner: false,

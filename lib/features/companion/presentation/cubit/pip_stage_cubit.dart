@@ -16,11 +16,12 @@ import '../../../../core/services/pip_tool_registry.dart';
 import '../../../../core/services/task_provider.dart';
 import '../../../../core/services/voice_service.dart';
 import '../../../../widgets/companion/pip_expression_matcher.dart';
-import '../../../../widgets/companion/pip_overlay_and_dock_area.dart';
 import '../../../../widgets/companion/pip_speech_coordinator.dart';
 import '../../../../widgets/companion/pip_stage_controller.dart';
 import '../../../../widgets/pip_params.dart';
+import '../../../activity/presentation/activity_cubit.dart';
 import '../../domain/pip_action_speech.dart';
+import '../../domain/pip_briefing.dart';
 import '../../domain/pip_character_bible.dart';
 import '../../domain/pip_structured_reply.dart';
 import 'pip_chat_engine.dart';
@@ -101,14 +102,8 @@ class PipStageCubit extends Cubit<PipStageState> {
     PipSfxService.sleep();
     emotionState.onSleepTriggered();
     eventLog.log('pip_slept');
-    emit(state.copyWith(isSleeping: true, overlay: CompanionOverlay.none, currentMood: PipMood.sleeping, statusText: "Pip is sleeping (Zzz)"));
+    emit(state.copyWith(isSleeping: true, currentMood: PipMood.sleeping, statusText: "Pip is sleeping (Zzz)"));
     speak("Entering sleep mode... Zzz. Say 'Hey Pip' or tap me to wake me up.");
-  }
-
-  void setOverlay(CompanionOverlay overlay) => emit(state.copyWith(overlay: overlay));
-  void dismissOverlay() {
-    if (state.overlay == CompanionOverlay.briefing) eventLog.log('briefing_closed');
-    emit(state.copyWith(overlay: CompanionOverlay.none));
   }
 
   /// Thumbs feedback on Pip's current reply; feeds the learning loop.
@@ -118,6 +113,7 @@ class PipStageCubit extends Cubit<PipStageState> {
     eventLog.log(positive ? 'reply_thumbs_up' : 'reply_thumbs_down', {'reply': text.length > 160 ? text.substring(0, 160) : text});
     emit(state.copyWith(statusText: positive ? "Thanks for the feedback!" : "Noted, I'll adjust."));
   }
+
   void clearSpeechBubble() {
     _speech.clear();
     emit(state.copyWith(speechText: "", isTypewriting: false));
@@ -245,6 +241,7 @@ class PipStageCubit extends Cubit<PipStageState> {
     if (tool != null) {
       try {
         final res = await tool.execute(args);
+        ActivityRecorder.tool(toolName, args, res);
         final error = res['error'];
         eventLog.log('tool_confirmed_and_executed', {'tool': toolName, 'ok': error == null});
         if (error != null) {
@@ -272,18 +269,17 @@ class PipStageCubit extends Cubit<PipStageState> {
 
   Future<void> triggerBriefing() async {
     eventLog.log('briefing_opened');
-    emit(state.copyWith(isLoading: true, isSleeping: false, overlay: CompanionOverlay.briefing, userPromptCallout: "☀️ Daily Briefing", statusText: "Pip is digesting your agenda...", currentMood: PipMood.thinking));
+    emit(state.copyWith(isLoading: true, isSleeping: false, statusText: "Pip is digesting your agenda...", currentMood: PipMood.thinking));
 
     final emails = await emailService.fetchUnreadSummaries();
     final tasks = taskProvider.allTasks.where((t) => !t.isCompleted).toList();
 
     try {
-      final provider = llmRegistry.getActiveProvider();
-      final prompt = 'Summarize daily agenda concisely:\nTasks: ${tasks.map((t) => t.title).join(", ")}\nEmails: ${emails.join(", ")}';
-      final response = await provider.chat([LlmMessage(role: 'user', content: prompt)]).timeout(const Duration(seconds: 45));
-
-      emit(state.copyWith(briefingContent: response.text, isLoading: false, statusText: "Morning Briefing Ready", currentMood: PipMood.happy));
-      speak("Here is your morning agenda! Check the card below for the action plan.", isHappy: true);
+      final text = await PipBriefing.compose(llmRegistry.getActiveProvider(),
+          tasks: tasks.map((t) => t.title).toList(), emails: emails);
+      ActivityRecorder.entry(PipBriefing.activity(tasks: tasks.length, emails: emails.length));
+      emit(state.copyWith(briefingContent: text, isLoading: false, statusText: "Briefing ready", currentMood: PipMood.happy));
+      speak("Here's your day. Ask me about anything in it.", isHappy: true);
     } catch (e) {
       emit(state.copyWith(isLoading: false, statusText: "Failed to generate briefing", currentMood: PipMood.unsure));
       debugPrint('Briefing failed: $e');

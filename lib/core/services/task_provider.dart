@@ -94,7 +94,8 @@ class TaskProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  void addTask({
+  /// Adds a task and returns its id.
+  String addTask({
     required String title,
     String? description,
     String project = 'Work',
@@ -113,6 +114,7 @@ class TaskProvider extends ChangeNotifier {
     eventLog?.log('task_created', {'taskId': newTask.id, 'priority': priority.name, 'hasDue': dueDate != null});
     _saveTasks();
     notifyListeners();
+    return newTask.id;
   }
 
   void toggleTask(String id) {

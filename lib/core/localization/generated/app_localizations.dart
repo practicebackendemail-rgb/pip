@@ -357,6 +357,270 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'I didn\'t catch anything. Try again a little louder.'**
   String get voiceHeardNothing;
+
+  /// No description provided for @navActivity.
+  ///
+  /// In en, this message translates to:
+  /// **'Activity'**
+  String get navActivity;
+
+  /// No description provided for @commandHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Ask Pip…'**
+  String get commandHint;
+
+  /// No description provided for @commandHintTasks.
+  ///
+  /// In en, this message translates to:
+  /// **'Ask about tasks…'**
+  String get commandHintTasks;
+
+  /// No description provided for @commandHintAlarms.
+  ///
+  /// In en, this message translates to:
+  /// **'Ask about alarms…'**
+  String get commandHintAlarms;
+
+  /// No description provided for @commandHintBriefing.
+  ///
+  /// In en, this message translates to:
+  /// **'Ask about your day…'**
+  String get commandHintBriefing;
+
+  /// No description provided for @commandSend.
+  ///
+  /// In en, this message translates to:
+  /// **'Send to Pip'**
+  String get commandSend;
+
+  /// No description provided for @commandMicStart.
+  ///
+  /// In en, this message translates to:
+  /// **'Talk to Pip'**
+  String get commandMicStart;
+
+  /// No description provided for @commandMicStop.
+  ///
+  /// In en, this message translates to:
+  /// **'Stop listening'**
+  String get commandMicStop;
+
+  /// No description provided for @pipThinking.
+  ///
+  /// In en, this message translates to:
+  /// **'Thinking…'**
+  String get pipThinking;
+
+  /// No description provided for @ledgeTasksIdle.
+  ///
+  /// In en, this message translates to:
+  /// **'Want me to plan your day, or add something?'**
+  String get ledgeTasksIdle;
+
+  /// No description provided for @ledgeAlarmsIdle.
+  ///
+  /// In en, this message translates to:
+  /// **'I can set, move or cancel any of these. Just say it.'**
+  String get ledgeAlarmsIdle;
+
+  /// No description provided for @ledgeBriefingIdle.
+  ///
+  /// In en, this message translates to:
+  /// **'Here\'s your day. Ask me about anything in it.'**
+  String get ledgeBriefingIdle;
+
+  /// No description provided for @ledgeActivityIdle.
+  ///
+  /// In en, this message translates to:
+  /// **'Everything I\'ve done for you. Undo anything that wasn\'t right.'**
+  String get ledgeActivityIdle;
+
+  /// No description provided for @chipBriefMe.
+  ///
+  /// In en, this message translates to:
+  /// **'Brief me'**
+  String get chipBriefMe;
+
+  /// No description provided for @chipPlanDay.
+  ///
+  /// In en, this message translates to:
+  /// **'Plan my day'**
+  String get chipPlanDay;
+
+  /// No description provided for @chipWhatsNext.
+  ///
+  /// In en, this message translates to:
+  /// **'What\'s next?'**
+  String get chipWhatsNext;
+
+  /// No description provided for @chipMoveOverdue.
+  ///
+  /// In en, this message translates to:
+  /// **'Move overdue to tomorrow'**
+  String get chipMoveOverdue;
+
+  /// No description provided for @chipWakeMe.
+  ///
+  /// In en, this message translates to:
+  /// **'Wake me tomorrow at 7'**
+  String get chipWakeMe;
+
+  /// No description provided for @chipRemindSoon.
+  ///
+  /// In en, this message translates to:
+  /// **'Remind me in 20 min'**
+  String get chipRemindSoon;
+
+  /// No description provided for @chipWhatAlarms.
+  ///
+  /// In en, this message translates to:
+  /// **'What alarms do I have?'**
+  String get chipWhatAlarms;
+
+  /// No description provided for @chipReadIt.
+  ///
+  /// In en, this message translates to:
+  /// **'Read it to me'**
+  String get chipReadIt;
+
+  /// No description provided for @chipWhatsUrgent.
+  ///
+  /// In en, this message translates to:
+  /// **'What\'s urgent?'**
+  String get chipWhatsUrgent;
+
+  /// No description provided for @queryPlanDay.
+  ///
+  /// In en, this message translates to:
+  /// **'Plan my day using my open tasks.'**
+  String get queryPlanDay;
+
+  /// No description provided for @queryWhatsNext.
+  ///
+  /// In en, this message translates to:
+  /// **'What should I do next?'**
+  String get queryWhatsNext;
+
+  /// No description provided for @queryMoveOverdue.
+  ///
+  /// In en, this message translates to:
+  /// **'Move my overdue tasks to tomorrow.'**
+  String get queryMoveOverdue;
+
+  /// No description provided for @queryWakeMe.
+  ///
+  /// In en, this message translates to:
+  /// **'Wake me tomorrow at 7am.'**
+  String get queryWakeMe;
+
+  /// No description provided for @queryRemindSoon.
+  ///
+  /// In en, this message translates to:
+  /// **'Remind me in 20 minutes.'**
+  String get queryRemindSoon;
+
+  /// No description provided for @queryWhatAlarms.
+  ///
+  /// In en, this message translates to:
+  /// **'What alarms and reminders do I have?'**
+  String get queryWhatAlarms;
+
+  /// No description provided for @queryReadIt.
+  ///
+  /// In en, this message translates to:
+  /// **'Read my briefing to me.'**
+  String get queryReadIt;
+
+  /// No description provided for @queryWhatsUrgent.
+  ///
+  /// In en, this message translates to:
+  /// **'What in my day is urgent?'**
+  String get queryWhatsUrgent;
+
+  /// No description provided for @undo.
+  ///
+  /// In en, this message translates to:
+  /// **'Undo'**
+  String get undo;
+
+  /// No description provided for @undone.
+  ///
+  /// In en, this message translates to:
+  /// **'Undone'**
+  String get undone;
+
+  /// No description provided for @undoFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'That can\'t be undone any more.'**
+  String get undoFailed;
+
+  /// No description provided for @activityTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'What Pip did'**
+  String get activityTitle;
+
+  /// No description provided for @activityEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing yet. Ask Pip to set an alarm, add a task or brief you.'**
+  String get activityEmpty;
+
+  /// No description provided for @activityToday.
+  ///
+  /// In en, this message translates to:
+  /// **'Today'**
+  String get activityToday;
+
+  /// No description provided for @activityYesterday.
+  ///
+  /// In en, this message translates to:
+  /// **'Yesterday'**
+  String get activityYesterday;
+
+  /// No description provided for @tasksTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Objectives'**
+  String get tasksTitle;
+
+  /// No description provided for @tasksEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing on your list. Ask Pip, or tap + to add one.'**
+  String get tasksEmpty;
+
+  /// No description provided for @tasksAdd.
+  ///
+  /// In en, this message translates to:
+  /// **'Add task'**
+  String get tasksAdd;
+
+  /// No description provided for @tasksOverdue.
+  ///
+  /// In en, this message translates to:
+  /// **'overdue'**
+  String get tasksOverdue;
+
+  /// No description provided for @briefingTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Your day'**
+  String get briefingTitle;
+
+  /// No description provided for @briefingEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'Ask Pip to brief you to see your day here.'**
+  String get briefingEmpty;
+
+  /// No description provided for @briefingRefresh.
+  ///
+  /// In en, this message translates to:
+  /// **'Refresh briefing'**
+  String get briefingRefresh;
 }
 
 class _AppLocalizationsDelegate
