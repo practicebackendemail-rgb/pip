@@ -1,25 +1,20 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+import '../../core/routes/app_routes.dart';
 import '../../core/di/injection.dart';
-import '../../core/domain/memory_repository.dart';
 import '../../core/services/email_service.dart';
 import '../../core/services/llm_registry_service.dart';
 import '../../core/services/pip_profile_service.dart';
 import '../../core/services/sync/pip_cloud_sync_coordinator.dart';
 import '../../core/theme/pip_theme.dart';
-import '../../features/onboarding/onboarding_flow.dart';
 import '../what_pip_knows_screen.dart';
-import 'settings_pages.dart';
 
 /// Settings grouped by what you're changing. Each row opens a small page;
 /// the pages reuse the onboarding steps so setup and settings stay identical.
 class PipSettingsScreen extends StatelessWidget {
   const PipSettingsScreen({super.key});
 
-  static Future<void> open(BuildContext context) =>
-      Navigator.of(context).push(MaterialPageRoute(builder: (_) => const PipSettingsScreen()));
-
-  void _push(BuildContext context, Widget page) =>
-      Navigator.of(context).push(MaterialPageRoute(builder: (_) => page));
+  static Future<void> open(BuildContext context) => context.push(AppRoutes.settings);
 
   @override
   Widget build(BuildContext context) {
@@ -44,7 +39,7 @@ class PipSettingsScreen extends StatelessWidget {
                     icon: Icons.mood_outlined,
                     title: 'Personality',
                     value: snap.data == null ? 'Humour and your name' : 'Calls you ${snap.data}',
-                    onTap: () => _push(context, const PersonalityPage()),
+                    onTap: () => context.push(AppRoutes.settingsPersonality),
                   ),
                 ),
                 const _Section('Brain'),
@@ -52,37 +47,34 @@ class PipSettingsScreen extends StatelessWidget {
                   icon: Icons.memory_outlined,
                   title: 'AI model',
                   value: _providerLabel(llm.activeProviderId),
-                  onTap: () => _push(context, const AiModelPage()),
+                  onTap: () => context.push(AppRoutes.settingsAiModel),
                 ),
                 const _Section('Connections'),
                 _Row(
                   icon: Icons.hub_outlined,
                   title: 'Email, calendar, voice and more',
                   value: email.isConfigured ? 'Email connected' : 'Nothing connected',
-                  onTap: () => _push(context, const ConnectionsPage()),
+                  onTap: () => context.push(AppRoutes.settingsConnections),
                 ),
                 const _Section('Privacy and backup'),
                 _Row(
                   icon: Icons.cloud_sync_outlined,
                   title: 'Sync and backup',
                   value: sync.lastSyncTime == null ? 'Never synced' : 'Last ${_ago(sync.lastSyncTime!)}',
-                  onTap: () => _push(context, const BackupPage()),
+                  onTap: () => context.push(AppRoutes.settingsBackup),
                 ),
                 _Row(
                   icon: Icons.psychology_outlined,
                   title: 'What Pip knows',
                   value: 'Review or forget memories',
-                  onTap: () => WhatPipKnowsScreen.show(context, getIt<MemoryRepository>()),
+                  onTap: () => WhatPipKnowsScreen.show(context),
                 ),
                 const _Section('About'),
                 _Row(
                   icon: Icons.replay_outlined,
                   title: 'Run setup again',
                   value: 'Walk through the first-run steps',
-                  onTap: () => _push(
-                    context,
-                    Builder(builder: (ctx) => OnboardingFlow(onComplete: () => Navigator.of(ctx).pop())),
-                  ),
+                  onTap: () => context.push(AppRoutes.settingsSetupAgain),
                 ),
               ],
             ),

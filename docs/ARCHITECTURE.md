@@ -96,3 +96,36 @@ const MiniPipAssistant(
   screenContext: 'User is on the Alarms & reminders screen',
 );
 ```
+
+## 6. How-To: Tokens, strings and routes (foundations)
+
+New and redesigned screens use these three; older screens move over as they are redesigned.
+
+**Design tokens.** Never use raw colours or spacing in widgets.
+
+```dart
+final t = context.tokens;            // lib/core/theme/pip_tokens.dart
+Container(
+  padding: EdgeInsets.all(t.space.lg),
+  color: t.colors.card,
+);
+if (context.reduceMotion) { /* skip animation */ }
+AnimatedOpacity(duration: context.motion(t.motion.fast), ...);
+```
+
+**Strings.** Add to `lib/core/localization/l10n/app_en.arb`, run `flutter gen-l10n`, then:
+
+```dart
+Text(context.l10n.actionContinue);
+Text(context.l10n.openTasksCount(tasks.length));   // plurals via ICU
+```
+
+**Routes.** Paths live only in `lib/core/routes/app_routes.dart`; the table is `app_router.dart`.
+
+```dart
+context.push(AppRoutes.settings);   // stack a screen
+context.go(AppRoutes.home);         // replace the stack
+context.pop();
+```
+
+The global `redirect` sends users to Welcome until `OnboardingGate` says setup is done, and keeps them out of Welcome/Onboarding afterwards (`/settings/setup` re-runs setup). Bottom sheets and dialogs are not routes.

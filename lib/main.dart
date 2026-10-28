@@ -3,7 +3,11 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'app/pip_app_flow.dart';
+import 'package:go_router/go_router.dart';
+import 'core/localization/l10n_extension.dart';
+import 'core/routes/app_router.dart';
+import 'core/routes/app_routes.dart';
+import 'core/routes/onboarding_gate.dart';
 import 'core/di/injection.dart';
 import 'core/domain/encrypted_memory_db.dart';
 import 'core/domain/event_log.dart';
@@ -21,7 +25,6 @@ import 'core/services/sync/pip_cloud_sync_coordinator.dart';
 import 'core/services/task_provider.dart';
 import 'core/theme/pip_theme.dart';
 import 'features/companion/presentation/cubit/pip_stage_cubit.dart';
-import 'features/reminders/presentation/screens/alarms_reminders_screen.dart';
 import 'widgets/companion/pip_overlay_widget.dart';
 
 // Overlay entry point required by flutter_overlay_window
@@ -43,6 +46,7 @@ void main() async {
   await PipSfxService.loadSetting();
   PipSfxService.preload();
   await PipNotificationService.init();
+  await OnboardingGate.instance.load();
 
   runApp(const PersonalAssistantApp());
 }
@@ -62,6 +66,7 @@ class _PersonalAssistantAppState extends State<PersonalAssistantApp>
   // One cubit instance shared by the widget tree and the overlay bridge, so the
   // floating overlay mirrors the same state the app shows.
   late final PipStageCubit _stageCubit;
+  late final GoRouter _router = buildAppRouter(OnboardingGate.instance, navigatorKey: pipNavigatorKey);
   PipOverlayBridge? _overlayBridge;
   late final EmbeddingBackfillService _backfill;
   String? _embeddingProviderId;
@@ -116,7 +121,7 @@ class _PersonalAssistantAppState extends State<PersonalAssistantApp>
 
   void _openAlarms() {
     PipNotificationService.launchedFromItem = null;
-    pipNavigatorKey.currentState?.push(AlarmsRemindersScreen.route());
+    _router.push(AppRoutes.alarms);
   }
 
   void _logSession(String type) {
@@ -153,12 +158,13 @@ class _PersonalAssistantAppState extends State<PersonalAssistantApp>
   Widget build(BuildContext context) {
     return BlocProvider.value(
       value: _stageCubit,
-      child: MaterialApp(
-        title: 'Pip',
-        navigatorKey: pipNavigatorKey,
+      child: MaterialApp.router(
+        onGenerateTitle: (context) => context.l10n.appTitle,
         debugShowCheckedModeBanner: false,
         theme: PipTheme.dark,
-        home: const PipAppFlow(),
+        routerConfig: _router,
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
       ),
     );
   }

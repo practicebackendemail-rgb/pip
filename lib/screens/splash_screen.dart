@@ -1,14 +1,18 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+import '../core/routes/app_routes.dart';
+import '../core/routes/onboarding_gate.dart';
 import '../core/theme/pip_theme.dart';
 import '../widgets/pip_companion.dart';
 
-/// Pip "boots up": asleep, eyes open, a happy bounce, then [onDone].
-/// Kept under 1.6 s (instant-ish with reduced motion) so it never feels like a wait.
+/// Pip "boots up": asleep, eyes open, a happy bounce, then moves on to home
+/// (or welcome on first run). Kept under 1.6 s, instant-ish with reduced motion.
 class PipSplashScreen extends StatefulWidget {
-  final VoidCallback onDone;
+  /// Overrides where to go when done (used by tests).
+  final VoidCallback? onDone;
 
-  const PipSplashScreen({super.key, required this.onDone});
+  const PipSplashScreen({super.key, this.onDone});
 
   @override
   State<PipSplashScreen> createState() => _PipSplashScreenState();
@@ -25,13 +29,19 @@ class _PipSplashScreenState extends State<PipSplashScreen> {
     final reduceMotion = MediaQuery.maybeDisableAnimationsOf(context) ?? false;
     if (reduceMotion) {
       _mood = PipMood.idle;
-      _timers.add(Timer(const Duration(milliseconds: 400), widget.onDone));
+      _timers.add(Timer(const Duration(milliseconds: 400), _finish));
       return;
     }
     _timers
       ..add(Timer(const Duration(milliseconds: 450), () => _set(PipMood.idle)))
       ..add(Timer(const Duration(milliseconds: 850), () => _set(PipMood.excited)))
-      ..add(Timer(const Duration(milliseconds: 1550), widget.onDone));
+      ..add(Timer(const Duration(milliseconds: 1550), _finish));
+  }
+
+  void _finish() {
+    if (!mounted) return;
+    if (widget.onDone != null) return widget.onDone!();
+    context.go(OnboardingGate.instance.completed ? AppRoutes.home : AppRoutes.welcome);
   }
 
   void _set(PipMood mood) {

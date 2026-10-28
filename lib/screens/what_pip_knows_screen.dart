@@ -1,7 +1,9 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:go_router/go_router.dart';
 import '../../core/di/injection.dart';
+import '../../core/routes/app_routes.dart';
 import '../../core/domain/memory_models.dart';
 import '../../core/domain/memory_repository.dart';
 import '../../core/services/nightly_reflection_service.dart';
@@ -13,16 +15,16 @@ import '../../widgets/sync/pip_sync_panel.dart';
 /// Lets the user inspect, edit, and delete learned profile facts, episodic memories,
 /// and behavioral rules, plus nuclear "Forget Everything" and immediate "Sync Now".
 class WhatPipKnowsScreen extends StatefulWidget {
-  final MemoryRepository memoryRepository;
+  final MemoryRepository? _repository;
 
-  const WhatPipKnowsScreen({super.key, required this.memoryRepository});
+  /// [memoryRepository] is for tests; the app uses the registered one.
+  const WhatPipKnowsScreen({super.key, MemoryRepository? memoryRepository}) : _repository = memoryRepository;
 
-  static void show(BuildContext context, MemoryRepository repo) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (_) => WhatPipKnowsScreen(memoryRepository: repo)),
-    );
-  }
+  MemoryRepository get memoryRepository => _repository ?? getIt<MemoryRepository>();
+
+  /// The optional repository argument is ignored; kept so older call sites
+  /// (`show(context, repo)`) still compile while they migrate.
+  static Future<void> show(BuildContext context, [MemoryRepository? _]) => context.push(AppRoutes.memory);
 
   @override
   State<WhatPipKnowsScreen> createState() => _WhatPipKnowsScreenState();

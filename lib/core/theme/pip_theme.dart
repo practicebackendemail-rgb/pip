@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'pip_tokens.dart';
+
+export 'pip_tokens.dart';
 
 /// Pip's palette, taken from the character design (amber body, rust trim,
 /// slate screens). Every screen should use these instead of raw colors.
@@ -65,6 +68,7 @@ class PipTheme {
     );
 
     return ThemeData(
+      extensions: const [PipTokens.dark],
       useMaterial3: true,
       brightness: Brightness.dark,
       colorScheme: scheme,

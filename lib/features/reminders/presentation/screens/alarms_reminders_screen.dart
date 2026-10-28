@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
+import '../../../../core/routes/app_routes.dart';
 import '../../../../core/theme/app_motion_tokens.dart';
 import '../../../../core/theme/pip_theme.dart';
 import '../../../../widgets/companion/mini_pip_assistant.dart';
@@ -18,9 +20,7 @@ class AlarmsRemindersScreen extends StatelessWidget {
 
   const AlarmsRemindersScreen({super.key, this.repository = const ScheduledReminderRepository()});
 
-  static Route<void> route() => MaterialPageRoute(builder: (_) => const AlarmsRemindersScreen());
-
-  static Future<void> open(BuildContext context) => Navigator.of(context).push(route());
+  static Future<void> open(BuildContext context) => context.push(AppRoutes.alarms);
 
   @override
   Widget build(BuildContext context) {

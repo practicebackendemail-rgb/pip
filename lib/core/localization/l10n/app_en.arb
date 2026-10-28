@@ -1,0 +1,39 @@
+{
+  "@@locale": "en",
+
+  "appTitle": "Pip",
+  "@appTitle": { "description": "App name shown in the window title and task switcher." },
+
+  "actionContinue": "Continue",
+  "actionBack": "Back",
+  "actionSave": "Save",
+  "actionCancel": "Cancel",
+  "actionSkip": "Skip for now",
+  "actionLater": "Later",
+  "actionDone": "Done",
+  "actionRetry": "Try again",
+  "saved": "Saved",
+
+  "navPip": "Pip",
+  "navTasks": "Tasks",
+  "navAlarms": "Alarms",
+  "navMemory": "Memory",
+  "navSettings": "Settings",
+
+  "greetingMorning": "Morning",
+  "greetingAfternoon": "Afternoon",
+  "greetingEvening": "Evening",
+  "greetingLateNight": "Late night",
+  "greetingStillUp": "Still up",
+  "greetingWithName": "{part}, {name}!",
+  "@greetingWithName": { "placeholders": { "part": { "type": "String" }, "name": { "type": "String" } } },
+  "greetingNoName": "{part}!",
+  "@greetingNoName": { "placeholders": { "part": { "type": "String" } } },
+
+  "voiceListening": "Listening…",
+  "voiceTapToTalk": "Tap to talk",
+  "voiceSayYesOrNo": "Just say yes or no.",
+
+  "openTasksCount": "{count, plural, =0{Nothing on your plate.} =1{1 open task} other{{count} open tasks}}",
+  "@openTasksCount": { "placeholders": { "count": { "type": "int" } } }
+}

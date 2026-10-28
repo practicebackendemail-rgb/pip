@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../core/di/injection.dart';
-import '../core/domain/memory_repository.dart';
 import '../core/services/pip_audio_coordinator.dart';
 import '../core/theme/pip_theme.dart';
 import '../features/companion/presentation/cubit/pip_stage_cubit.dart';
@@ -61,7 +60,7 @@ class _WideHome extends StatelessWidget {
       case 2:
         AlarmsRemindersScreen.open(context);
       case 3:
-        WhatPipKnowsScreen.show(context, getIt<MemoryRepository>());
+        WhatPipKnowsScreen.show(context);
       case 4:
         PipSettingsScreen.open(context);
       default:

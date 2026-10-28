@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+import '../../core/routes/app_routes.dart';
+import '../../core/routes/onboarding_gate.dart';
 import '../../core/services/pip_profile_service.dart';
+import '../../core/theme/app_motion_tokens.dart';
 import '../../core/services/pip_sfx_service.dart';
 import '../../core/theme/pip_theme.dart';
 import '../../widgets/pip_guide.dart';
@@ -26,12 +30,13 @@ abstract class OnboardingStepController {
 
 /// Pip-guided first-run setup: name → brain → backup → connections.
 class OnboardingFlow extends StatefulWidget {
-  final VoidCallback onComplete;
-
   /// True when the user restored a backup first, so Pip can say so.
   final bool restoredFromBackup;
 
-  const OnboardingFlow({super.key, required this.onComplete, this.restoredFromBackup = false});
+  /// Run again from Settings: finishing goes back instead of to home.
+  final bool rerun;
+
+  const OnboardingFlow({super.key, this.restoredFromBackup = false, this.rerun = false});
 
   @override
   State<OnboardingFlow> createState() => _OnboardingFlowState();
@@ -86,8 +91,9 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
     if (_index == 0) _name = await PipProfileService.userName();
     if (_index == _stepCount - 1) {
       PipSfxService.happy();
-      await PipProfileService.setCompletedOnboarding(true);
-      widget.onComplete();
+      await OnboardingGate.instance.complete();
+      if (!mounted) return;
+      widget.rerun ? context.pop() : context.go(AppRoutes.home);
       return;
     }
     PipSfxService.chirp();
@@ -96,7 +102,11 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
 
   void _go(int index) {
     setState(() => _index = index);
-    _pages.animateToPage(index, duration: const Duration(milliseconds: 320), curve: Curves.easeOutCubic);
+    _pages.animateToPage(
+      index,
+      duration: AppMotionTokens.resolveDuration(context, AppMotionTokens.medium),
+      curve: AppMotionTokens.easeOut,
+    );
   }
 
   @override

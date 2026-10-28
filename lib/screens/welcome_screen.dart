@@ -1,18 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import '../core/di/injection.dart';
+import '../core/routes/app_routes.dart';
 import '../core/services/sync/pip_cloud_sync_coordinator.dart';
 import '../core/theme/pip_theme.dart';
 import '../widgets/pip_companion.dart';
 import '../widgets/pocket_world/pip_pocket_world.dart';
 
-/// First-run landing: Pip waves from the desk, three promises, two ways in.
+/// First-run landing: Pip on its island, three promises, two ways in.
 class PipWelcomeScreen extends StatefulWidget {
-  final VoidCallback onStart;
-
-  /// Called after a backup was imported, so setup continues with data restored.
-  final VoidCallback onRestored;
-
-  const PipWelcomeScreen({super.key, required this.onStart, required this.onRestored});
+  const PipWelcomeScreen({super.key});
 
   @override
   State<PipWelcomeScreen> createState() => _PipWelcomeScreenState();
@@ -35,7 +32,8 @@ class _PipWelcomeScreenState extends State<PipWelcomeScreen> {
       _mood = ok ? PipMood.excited : PipMood.unsure;
     });
     if (ok) {
-      widget.onRestored();
+      // Continue setup with data restored; Pip mentions it on the first step.
+      context.go(Uri(path: AppRoutes.onboarding, queryParameters: {AppRoutes.restoredParam: '1'}).toString());
     } else if (sync.lastError != null) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text("Couldn't restore that backup. ${sync.lastError}")),
@@ -97,7 +95,7 @@ class _PipWelcomeScreenState extends State<PipWelcomeScreen> {
           const SizedBox(height: PipSpace.xl),
           SizedBox(
             width: double.infinity,
-            child: FilledButton(onPressed: _restoring ? null : widget.onStart, child: const Text('Set me up')),
+            child: FilledButton(onPressed: _restoring ? null : () => context.go(AppRoutes.onboarding), child: const Text('Set me up')),
           ),
           const SizedBox(height: PipSpace.sm),
           SizedBox(
