@@ -1,12 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../core/di/injection.dart';
 import '../../core/services/llm_registry_service.dart';
 import '../../core/services/pip_profile_service.dart';
 import '../../core/services/pip_sfx_service.dart';
 import '../../core/theme/pip_theme.dart';
-import '../../features/companion/presentation/cubit/pip_stage_cubit.dart';
-import '../../features/companion/presentation/cubit/pip_stage_state.dart';
 import '../../features/onboarding/onboarding_flow.dart';
 import '../../features/onboarding/steps/backup_step.dart';
 import '../../features/onboarding/steps/brain_step.dart';
@@ -258,16 +255,6 @@ class _PersonalityPageState extends State<PersonalityPage> {
               ),
               const SizedBox(height: PipSpace.xl),
               Text('Sounds', style: text.titleMedium),
-              BlocSelector<PipStageCubit, PipStageState, bool>(
-                selector: (s) => !s.isSilentCompanionMode,
-                builder: (context, voiceOn) => SwitchListTile.adaptive(
-                  contentPadding: EdgeInsets.zero,
-                  title: const Text("Pip's voice"),
-                  subtitle: Text('Pip reads its replies out loud', style: text.bodySmall),
-                  value: voiceOn,
-                  onChanged: context.read<PipStageCubit>().setVoiceEnabled,
-                ),
-              ),
               SwitchListTile.adaptive(
                 contentPadding: EdgeInsets.zero,
                 title: const Text('Sound effects'),

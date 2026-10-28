@@ -11,7 +11,6 @@ class PipStageState extends Equatable {
   final String userPromptCallout;
   final String briefingContent;
   final Map<String, dynamic>? pendingActionConfirmation;
-  final bool isSilentCompanionMode;
 
   const PipStageState({
     this.currentMood = PipMood.idle,
@@ -23,7 +22,6 @@ class PipStageState extends Equatable {
     this.userPromptCallout = "",
     this.briefingContent = "",
     this.pendingActionConfirmation,
-    this.isSilentCompanionMode = true,
   });
 
   PipStageState copyWith({
@@ -37,7 +35,6 @@ class PipStageState extends Equatable {
     String? briefingContent,
     Map<String, dynamic>? pendingActionConfirmation,
     bool clearPendingAction = false,
-    bool? isSilentCompanionMode,
   }) {
     return PipStageState(
       currentMood: currentMood ?? this.currentMood,
@@ -50,7 +47,6 @@ class PipStageState extends Equatable {
       briefingContent: briefingContent ?? this.briefingContent,
       pendingActionConfirmation:
           clearPendingAction ? null : (pendingActionConfirmation ?? this.pendingActionConfirmation),
-      isSilentCompanionMode: isSilentCompanionMode ?? this.isSilentCompanionMode,
     );
   }
 
@@ -65,6 +61,5 @@ class PipStageState extends Equatable {
         userPromptCallout,
         briefingContent,
         pendingActionConfirmation,
-        isSilentCompanionMode,
       ];
 }
