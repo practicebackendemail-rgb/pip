@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_overlay_window/flutter_overlay_window.dart';
 import '../pip_companion.dart';
 
@@ -94,7 +95,16 @@ class _PipOverlayWidgetState extends State<PipOverlayWidget> {
   Future<void> _go(BubbleState s) async {
     if (s == _state) return;
     final size = PipOverlayWidget.sizes[s]!;
-    await FlutterOverlayWindow.resizeOverlay(size.width.round(), size.height.round(), true);
+    // The plugin runs this engine before the window is shown and keeps it
+    // after it closes; resizing then has no handler. Only resize when shown.
+    try {
+      if (!await FlutterOverlayWindow.isActive()) return;
+      await FlutterOverlayWindow.resizeOverlay(size.width.round(), size.height.round(), true);
+    } on MissingPluginException {
+      return;
+    } on PlatformException catch (e) {
+      debugPrint('Bubble resize failed: $e');
+    }
     if (mounted) setState(() => _state = s);
   }
 
