@@ -86,7 +86,7 @@ class _PersonalAssistantAppState extends State<PersonalAssistantApp>
   StreamSubscription<int>? _notificationTaps;
   late final ActivityCubit _activity =
       ActivityCubit(repository: const PrefsActivityRepository(), undoer: ToolActivityUndoer(getIt<TaskProvider>()))..load();
-  late final VoiceWiring _voice = VoiceWiring(audio: getIt(), voice: getIt(), llm: getIt());
+  late final VoiceWiring _voice = VoiceWiring(audio: getIt(), stage: _stageCubit.stream, llm: getIt());
 
   @override
   void initState() {

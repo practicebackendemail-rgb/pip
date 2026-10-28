@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 import '../../features/voice/data/gemini_voice_capture.dart';
 import '../../features/voice/data/voice_settings.dart';
+import '../../features/voice/domain/listen_delivery.dart';
 import '../../features/voice/domain/speech_transcriber.dart';
 import 'pip_sfx_service.dart';
 import 'wake_word.dart';
@@ -58,6 +59,7 @@ class PipAudioCoordinator extends ChangeNotifier {
         onError: (err) {
           debugPrint('AudioCoordinator STT error: ${err.errorMsg} (session: $_sessionState)');
           if (_sessionState == PipAudioSessionState.activeCommandListening) {
+            _delivery.stopped(); // e.g. "no match" after partial words: keep them
             _sessionState = PipAudioSessionState.idle;
             notifyListeners();
           }
@@ -81,6 +83,14 @@ class PipAudioCoordinator extends ChangeNotifier {
     }
   }
 
+  static const Duration beepLength = Duration(milliseconds: 220);
+
+  late final ListenDelivery _delivery = ListenDelivery(onHeard: (text) {
+    lastError.value = null;
+    stopListening();
+    onCommandReceived?.call(text);
+  }, onNothing: () => lastError.value = "I didn't catch that. Tap the mic and try again.");
+
   void _handleStatusChange(String status) {
     debugPrint('AudioCoordinator status: $status (session: $_sessionState)');
     if (status == 'notListening' || status == 'done') {
@@ -91,6 +101,7 @@ class PipAudioCoordinator extends ChangeNotifier {
           }
         });
       } else if (_sessionState == PipAudioSessionState.activeCommandListening) {
+        _delivery.stopped();
         _sessionState = PipAudioSessionState.idle;
         notifyListeners();
       }
@@ -143,28 +154,29 @@ class PipAudioCoordinator extends ChangeNotifier {
   /// Triggers full active command capture (when wake word is detected or manual mic clicked)
   Future<void> startActiveListening({required Function(String query) onQuery, bool followUp = false}) async {
     onCommandReceived = onQuery;
+    final wasListening = _speech.isListening;
     await _speech.stop();
+    // A restart straight after the wake loop fails with "busy": wait a moment.
+    if (wasListening) await Future<void>.delayed(const Duration(milliseconds: 200));
     _sessionState = PipAudioSessionState.activeCommandListening;
     _lastRecognizedWords = '';
+    _delivery.begin();
     notifyListeners();
-    if (!followUp) PipSfxService.listen(); // "boop-beep": the mic is open
+    // "boop-beep" finishes before the mic opens, so it isn't heard as speech.
+    if (!followUp) await PipSfxService.listen().then((_) => Future<void>.delayed(beepLength));
     if (_useGemini) return _listenWithGemini(onQuery, followUp: followUp);
 
     try {
       await _speech.listen(
         onResult: (result) {
           _lastRecognizedWords = result.recognizedWords;
+          _delivery.heard(result.recognizedWords);
           notifyListeners();
-
-          if (result.finalResult && result.recognizedWords.trim().isNotEmpty) {
-            final text = result.recognizedWords.trim();
-            stopListening();
-            onQuery(text);
-          }
+          if (result.finalResult) _delivery.deliver();
         },
         listenOptions: stt.SpeechListenOptions(
-          // A follow-up gives up sooner if you don't answer.
-          pauseFor: Duration(seconds: followUp ? 3 : 4),
+          // Stop 2.5 s after you finish (a follow-up gives up sooner).
+          pauseFor: Duration(milliseconds: followUp ? 2000 : 2500),
           listenFor: Duration(seconds: followUp ? 8 : 30),
           listenMode: stt.ListenMode.dictation,
           partialResults: true,
@@ -217,8 +229,8 @@ class PipAudioCoordinator extends ChangeNotifier {
     _speech.stop();
     notifyListeners();
     Future.delayed(const Duration(milliseconds: 300), () {
-      PipSfxService.listen();
       if (followUp.isNotEmpty && onCommandReceived != null) {
+        PipSfxService.chirp(); // heard it all in one go: acknowledge, no mic beep
         onCommandReceived!(followUp);
       } else {
         // Transition to active command listening for user follow-up

@@ -20,7 +20,8 @@ class VoiceActivityDetector {
     this.startMarginDb = 12,
     this.endMarginDb = 7,
     this.minSpeech = const Duration(milliseconds: 250),
-    this.endSilence = const Duration(milliseconds: 900),
+    // Long enough for a thinking pause mid-sentence, short enough to feel quick.
+    this.endSilence = const Duration(milliseconds: 1200),
     this.noSpeechTimeout = const Duration(seconds: 6),
   });
 
@@ -28,8 +29,7 @@ class VoiceActivityDetector {
   static const Duration calibration = Duration(milliseconds: 300);
 
   double _noiseFloorDb = -55;
-  double _calibrationSum = 0;
-  int _calibrationFrames = 0;
+  bool _calibrated = false;
   Duration _elapsed = Duration.zero;
   Duration _loudFor = Duration.zero;
   Duration _quietFor = Duration.zero;
@@ -51,11 +51,12 @@ class VoiceActivityDetector {
     final db = levelDb(pcm);
     level = ((db + 60) / 60).clamp(0.0, 1.0);
 
-    // First, just listen to the room so steady noise sets the floor.
+    // First, just listen to the room. The floor is the quietest moment, not
+    // the average, so a beep or an early word can't make Pip think the room
+    // is loud (and then miss normal speech).
     if (_elapsed <= calibration) {
-      _calibrationSum += db;
-      _calibrationFrames++;
-      _noiseFloorDb = _calibrationSum / _calibrationFrames;
+      _noiseFloorDb = _calibrated ? math.min(_noiseFloorDb, db) : db;
+      _calibrated = true;
       return VadEvent.none;
     }
 
