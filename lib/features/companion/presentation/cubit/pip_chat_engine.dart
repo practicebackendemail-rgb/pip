@@ -51,13 +51,10 @@ class PipChatEngine {
         calls.add(ToolCallRequest(toolName: parsed.toolCallName!, arguments: parsed.toolCallArgs ?? {}));
       }
 
-      if (calls.isEmpty) {
-        // With tools enabled the schema is not enforced, so a plain-text answer
-        // needs one structured pass to recover emotion and animation.
-        if (parsed.isStructured || toolSpecs == null) return _finish(userText, parsed);
-        messages.add(LlmMessage(role: 'assistant', content: response.text));
-        break;
-      }
+      // No tool needed: that's the answer. A plain-text reply (the schema
+      // isn't enforced while tools are on) is used as is: a second "make it
+      // JSON" call only to recover the emotion doubled the wait.
+      if (calls.isEmpty) return _finish(userText, parsed);
 
       final exec = await toolCoordinator.executeCalls(calls, messages);
       if (exec.requiresConfirmation) return PipChatOutcome.confirmation(exec);
@@ -77,4 +74,8 @@ class PipChatEngine {
     history.addTurn(userText, reply.text);
     return PipChatOutcome.reply(reply);
   }
+
+  /// Records a turn that ended outside the loop (e.g. an action you
+  /// confirmed), so the next question can refer back to it.
+  void remember(String userText, String pipText) => history.addTurn(userText, pipText);
 }

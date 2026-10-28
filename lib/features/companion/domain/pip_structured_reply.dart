@@ -101,7 +101,31 @@ class PipStructuredReply {
     }
 
     // 3. Fallback: treat raw text as plain conversational reply with default calm emotion
-    return PipStructuredReply(text: clean, isStructured: false);
+    return _salvage(clean);
+  }
+
+  /// Last resort for replies that aren't valid JSON. A truncated or slightly
+  /// broken object still has a readable "text" (and maybe "emotion"): show
+  /// those instead of the raw `{"text": …` blob. Plain prose is kept, minus
+  /// any stray `[EMOTION: …]` tag, whose emotion is used.
+  static PipStructuredReply _salvage(String raw) {
+    String? field(String name) {
+      final m = RegExp('"$name"\\s*:\\s*"((?:[^"\\\\]|\\\\.)*)').firstMatch(raw);
+      if (m == null) return null;
+      try {
+        return jsonDecode('"${m.group(1)}"') as String;
+      } catch (_) {
+        return m.group(1);
+      }
+    }
+
+    final text = field('text');
+    if (text != null && text.trim().isNotEmpty) {
+      return PipStructuredReply(text: text.trim(), emotion: field('emotion')?.toLowerCase() ?? 'calm', isStructured: false);
+    }
+    final tag = RegExp(r'\[EMOTION:\s*([a-zA-Z]+)\]', caseSensitive: false).firstMatch(raw);
+    final prose = raw.replaceAll(RegExp(r'\[EMOTION:\s*[a-zA-Z]+\]', caseSensitive: false), '').trim();
+    return PipStructuredReply(text: prose, emotion: tag?.group(1)?.toLowerCase() ?? 'calm', isStructured: false);
   }
 
   /// Resolves the structured emotion and animation into Pip's visual vector posture

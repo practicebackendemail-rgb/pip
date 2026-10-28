@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:injectable/injectable.dart';
@@ -153,22 +154,30 @@ class PipStageCubit extends Cubit<PipStageState> {
       final provider = PipBrains.instance.providerFor(PipBrains.jobFor(userText), llmRegistry);
       final embeddingProvider = llmRegistry.getEmbeddingProvider();
 
-      final activeRules = await memoryRepository.getActiveRules();
-      final memories = await _memoryHelper.retrieveRelevantMemories(queryText: userText, embeddingProvider: embeddingProvider);
+      // Independent lookups run together (the memory search makes a network call).
+      final (activeRules, memories, humor) = await (
+        memoryRepository.getActiveRules(),
+        _memoryHelper.retrieveRelevantMemories(queryText: userText, embeddingProvider: embeddingProvider),
+        PipProfileService.humor(),
+      ).wait;
+      final nativeTools = provider.capabilities.supportsTools;
 
       final systemContext = PipCharacterBible.buildSystemPrompt(
         emotionContext: emotionState.toPromptContext(),
-        humorLevel: await PipProfileService.humor(),
+        humorLevel: humor,
         activeRules: activeRules.map((r) => r.instruction).toList(),
         relevantMemories: memories.map((m) => m.text).toList(),
-        toolsContext: toolRegistry.buildToolsPromptContext(),
+        // Native tools already carry their descriptions; listing them again
+        // as text doubled the prompt and invited half-JSON tool calls.
+        toolsContext: nativeTools ? '' : toolRegistry.buildToolsPromptContext(),
+        nativeTools: nativeTools,
       );
 
       final outcome = await _chatEngine.run(
         provider: provider,
         systemContext: systemContext,
         userText: userText,
-        toolSpecs: provider.capabilities.supportsTools ? toolRegistry.toToolSpecs() : null,
+        toolSpecs: nativeTools ? toolRegistry.toToolSpecs() : null,
       );
       final pending = outcome.pendingConfirmation;
       if (pending != null) {
@@ -185,6 +194,7 @@ class PipStageCubit extends Cubit<PipStageState> {
         ));
         final ask = describePendingAction(pending.pendingToolName ?? '', pending.pendingArgs ?? const {});
         final tapOnly = needsTapToConfirm(pending.pendingLevel?.name);
+        _chatEngine.remember(userText, ask);
         speak('$ask ${tapOnly ? 'Tap Execute to confirm.' : 'Just say yes or no.'}');
         return;
       }
@@ -210,6 +220,11 @@ class PipStageCubit extends Cubit<PipStageState> {
         mood: resolvedMood);
   }
 
+  static String _brief(Map<String, dynamic> res) {
+    final s = jsonEncode(res);
+    return s.length > 300 ? '${s.substring(0, 300)}…' : s;
+  }
+
   Future<void> confirmPendingAction() async {
     final pending = state.pendingActionConfirmation;
     if (pending == null) return;
@@ -224,6 +239,8 @@ class PipStageCubit extends Cubit<PipStageState> {
         ActivityRecorder.tool(toolName, args, res);
         final error = res['error'];
         eventLog.log('tool_confirmed_and_executed', {'tool': toolName, 'ok': error == null});
+        // So "undo that" or "move it to 6" can refer back to this action.
+        _chatEngine.remember('Yes, go ahead.', '${describeToolResult(toolName, res)} ($toolName result: ${_brief(res)})');
         if (error != null) {
           emit(state.copyWith(isLoading: false, currentMood: PipMood.unsure, statusText: "Action failed"));
           speak("That didn't work: $error");

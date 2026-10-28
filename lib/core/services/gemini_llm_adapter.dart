@@ -99,7 +99,10 @@ class GeminiLlmAdapter implements LlmProvider {
       throw Exception('Gemini API key is not configured.');
     }
 
-    final contents = buildContents(messages);
+    // The system prompt goes in systemInstruction, which Gemini follows far
+    // more reliably than the same text sent as a user message.
+    final system = messages.where((m) => m.role == 'system').map((m) => m.content).join('\n\n');
+    final contents = buildContents(messages.where((m) => m.role != 'system').toList());
 
     final candidateModels = (await _modelsFor(apiKey)).take(3).toList();
 
@@ -112,6 +115,10 @@ class GeminiLlmAdapter implements LlmProvider {
 
         final Map<String, dynamic> body = {
           'contents': contents,
+          if (system.isNotEmpty) 'systemInstruction': {'parts': [{'text': system}]},
+          // Gemini defaults to 1.0, its most random: tools and times got
+          // picked inconsistently. Lower when acting, a bit livelier to chat.
+          'generationConfig': {'temperature': tools != null && tools.isNotEmpty ? 0.3 : 0.6},
         };
 
         if (tools != null && tools.isNotEmpty) {
@@ -127,10 +134,9 @@ class GeminiLlmAdapter implements LlmProvider {
         }
 
         if (jsonSchema != null) {
-          body['generationConfig'] = {
-            'responseMimeType': 'application/json',
-            'responseSchema': jsonSchema,
-          };
+          (body['generationConfig'] as Map<String, dynamic>)
+            ..['responseMimeType'] = 'application/json'
+            ..['responseSchema'] = jsonSchema;
         }
 
         final response = await http.post(

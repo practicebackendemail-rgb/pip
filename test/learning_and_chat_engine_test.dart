@@ -85,7 +85,7 @@ void main() {
   setUp(() => SharedPreferences.setMockInitialValues({'saved_tasks': '[]'}));
 
   group('Chat engine', () {
-    test('plain-text answer with tools enabled gets one structured pass that restores emotion', () async {
+    test('plain-text answer with tools enabled is used as is, with no extra call', () async {
       final provider = _ScriptedProvider(['Hello there', _structured]);
       final outcome = await _engine().run(
         provider: provider,
@@ -93,9 +93,8 @@ void main() {
         userText: 'hi',
         toolSpecs: const [],
       );
-      expect(provider.requests, hasLength(2));
-      expect(provider.schemas.last, isNotNull);
-      expect(outcome.reply!.emotion, 'happy');
+      expect(provider.requests, hasLength(1));
+      expect(outcome.reply!.text, 'Hello there');
     });
 
     test('structured answer needs no extra call', () async {
