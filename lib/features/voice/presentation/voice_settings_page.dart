@@ -3,6 +3,7 @@ import '../../../core/di/injection.dart';
 import '../../../core/localization/l10n_extension.dart';
 import '../../../core/services/pip_audio_coordinator.dart';
 import '../../../core/theme/pip_theme.dart';
+import '../../presence/presence_picker.dart';
 import '../data/voice_settings.dart';
 import '../domain/speech_transcriber.dart';
 import 'voice_try_it.dart';
@@ -49,6 +50,8 @@ class VoiceSettingsPage extends StatelessWidget {
                   value: settings.wakeWord,
                   onChanged: (v) => settings.update(wakeWord: v),
                 ),
+                _Heading(l10n.presenceHeading),
+                const PresencePicker(),
                 SizedBox(height: t.space.lg),
                 Text(l10n.voicePrivacyNote, style: Theme.of(context).textTheme.bodySmall),
               ],

@@ -1,6 +1,7 @@
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../features/presence/presence_mode.dart';
 
 enum PipSound { chirp, happy, thinking, blip, sleep, laugh, sad, excited, unsure, listen }
 
@@ -72,7 +73,7 @@ class PipSfxService {
   /// player, and if that fails, retries once with a fresh player (the plain,
   /// most compatible path) so one broken player never silences Pip.
   static Future<bool> play(PipSound sound, {double volume = 1.0}) async {
-    if (!enableAudio) return false;
+    if (!enableAudio || !PresenceSettings.instance.allowSounds) return false;
     try {
       await preload();
       final player = _players[sound];
@@ -99,7 +100,8 @@ class PipSfxService {
   }
 
   /// Whether an idle (unprompted) sound may play at [hour].
-  static bool idleSoundAllowed(int hour) => enableAudio && idleSounds && hour >= 7 && hour < 22;
+  static bool idleSoundAllowed(int hour) =>
+      enableAudio && idleSounds && PresenceSettings.instance.allowProactive && hour >= 7 && hour < 22;
 
   /// Softer sound for something Pip does on its own.
   static Future<void> idle(PipSound sound) async {

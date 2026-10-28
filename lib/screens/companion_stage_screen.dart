@@ -14,6 +14,7 @@ import '../../features/companion/presentation/cubit/pip_stage_cubit.dart';
 import '../../features/companion/presentation/cubit/pip_stage_state.dart';
 import '../../features/companion/presentation/widgets/heard_caption.dart';
 import '../../features/companion/presentation/widgets/pip_screen_context.dart';
+import '../../features/presence/presence_mode.dart';
 import '../widgets/comic_speech_bubble.dart';
 import '../widgets/companion/pip_action_confirmation_banner.dart';
 import '../widgets/companion/pip_ambient_glow.dart';
@@ -49,7 +50,8 @@ class _CompanionStageScreenState extends State<CompanionStageScreen> {
   void initState() {
     super.initState();
     PipProfileService.userName().then((name) {
-      if (!mounted || name == null) return;
+      // Greetings are Pip speaking up unprompted: only in casual mode.
+      if (!mounted || name == null || !PresenceSettings.instance.allowProactive) return;
       context.read<PipStageCubit>().speak("${PipProfileService.greeting(name)} What are we tackling today?", isHappy: true);
     });
     WidgetsBinding.instance.addPostFrameCallback((_) {

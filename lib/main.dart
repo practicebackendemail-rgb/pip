@@ -27,6 +27,8 @@ import 'core/theme/pip_theme.dart';
 import 'features/activity/data/activity_data.dart';
 import 'features/activity/presentation/activity_cubit.dart';
 import 'features/companion/presentation/cubit/pip_stage_cubit.dart';
+import 'features/companion/presentation/widgets/pip_screen_context.dart';
+import 'features/presence/presence_mode.dart';
 import 'features/voice/voice_wiring.dart';
 import 'widgets/companion/pip_overlay_widget.dart';
 
@@ -47,6 +49,7 @@ void main() async {
   await configureDependencies();
   await PipDesktopWindowManager.initialize();
   await PipSfxService.loadSetting();
+  await PresenceSettings.instance.load();
   PipSfxService.preload();
   await PipNotificationService.init();
   await OnboardingGate.instance.load();
@@ -102,6 +105,13 @@ class _PersonalAssistantAppState extends State<PersonalAssistantApp>
     );
     _logSession('session_started');
     _voice.start();
+    // Ctrl+Shift+P (or the tray) summons Pip already listening.
+    PipDesktopWindowManager.onSummon = () {
+      _router.go(AppRoutes.home);
+      getIt<PipAudioCoordinator>().startActiveListening(
+        onQuery: (q) => _stageCubit.handleQuery(PipScreenContext.withContext(q)),
+      );
+    };
     _notificationTaps = PipNotificationService.openedItems.listen((_) => _openAlarms());
     // Reflection, then embedding backfill, once the first frame is up
     WidgetsBinding.instance.addPostFrameCallback((_) async {

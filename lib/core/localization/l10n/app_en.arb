@@ -121,5 +121,14 @@
   "tasksOverdue": "overdue",
   "briefingTitle": "Your day",
   "briefingEmpty": "Ask Pip to brief you to see your day here.",
-  "briefingRefresh": "Refresh briefing"
+  "briefingRefresh": "Refresh briefing",
+  "presenceHeading": "Speaking up",
+  "presenceCasual": "Casual",
+  "presenceCasualDetail": "Pip greets you, chirps and wanders about.",
+  "presenceFocus": "Focus",
+  "presenceFocusDetail": "No idle sounds or greetings. Pip talks only when you talk to it.",
+  "presenceBriefing": "Briefing",
+  "presenceBriefingDetail": "Quiet through the day; ask \"what did I miss?\" when you're ready.",
+  "presenceQuiet": "Quiet",
+  "presenceQuietDetail": "No sounds and no spoken voice. Pip still works and shows its words."
 }

@@ -1,4 +1,5 @@
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../../presence/presence_mode.dart';
 import '../../../../core/services/voice_service.dart';
 
 /// Pip's spoken voice: reads replies aloud through [VoiceService] (text to
@@ -32,6 +33,7 @@ class PipVoiceOutput {
   Future<void> say(String text) async {
     final service = _service;
     if (service == null || text.trim().isEmpty || !await enabled) return;
+    if (!PresenceSettings.instance.allowSpeech) return; // Quiet mode: words on screen only
     try {
       await service.speak(text);
     } catch (_) {}

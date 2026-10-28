@@ -621,6 +621,60 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Refresh briefing'**
   String get briefingRefresh;
+
+  /// No description provided for @presenceHeading.
+  ///
+  /// In en, this message translates to:
+  /// **'Speaking up'**
+  String get presenceHeading;
+
+  /// No description provided for @presenceCasual.
+  ///
+  /// In en, this message translates to:
+  /// **'Casual'**
+  String get presenceCasual;
+
+  /// No description provided for @presenceCasualDetail.
+  ///
+  /// In en, this message translates to:
+  /// **'Pip greets you, chirps and wanders about.'**
+  String get presenceCasualDetail;
+
+  /// No description provided for @presenceFocus.
+  ///
+  /// In en, this message translates to:
+  /// **'Focus'**
+  String get presenceFocus;
+
+  /// No description provided for @presenceFocusDetail.
+  ///
+  /// In en, this message translates to:
+  /// **'No idle sounds or greetings. Pip talks only when you talk to it.'**
+  String get presenceFocusDetail;
+
+  /// No description provided for @presenceBriefing.
+  ///
+  /// In en, this message translates to:
+  /// **'Briefing'**
+  String get presenceBriefing;
+
+  /// No description provided for @presenceBriefingDetail.
+  ///
+  /// In en, this message translates to:
+  /// **'Quiet through the day; ask \"what did I miss?\" when you\'re ready.'**
+  String get presenceBriefingDetail;
+
+  /// No description provided for @presenceQuiet.
+  ///
+  /// In en, this message translates to:
+  /// **'Quiet'**
+  String get presenceQuiet;
+
+  /// No description provided for @presenceQuietDetail.
+  ///
+  /// In en, this message translates to:
+  /// **'No sounds and no spoken voice. Pip still works and shows its words.'**
+  String get presenceQuietDetail;
 }
 
 class _AppLocalizationsDelegate

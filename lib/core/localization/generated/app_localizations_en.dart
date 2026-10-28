@@ -297,4 +297,35 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get briefingRefresh => 'Refresh briefing';
+
+  @override
+  String get presenceHeading => 'Speaking up';
+
+  @override
+  String get presenceCasual => 'Casual';
+
+  @override
+  String get presenceCasualDetail =>
+      'Pip greets you, chirps and wanders about.';
+
+  @override
+  String get presenceFocus => 'Focus';
+
+  @override
+  String get presenceFocusDetail =>
+      'No idle sounds or greetings. Pip talks only when you talk to it.';
+
+  @override
+  String get presenceBriefing => 'Briefing';
+
+  @override
+  String get presenceBriefingDetail =>
+      'Quiet through the day; ask \"what did I miss?\" when you\'re ready.';
+
+  @override
+  String get presenceQuiet => 'Quiet';
+
+  @override
+  String get presenceQuietDetail =>
+      'No sounds and no spoken voice. Pip still works and shows its words.';
 }

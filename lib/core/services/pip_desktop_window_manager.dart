@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/foundation.dart';
+import '../../features/presence/presence_mode.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:hotkey_manager/hotkey_manager.dart';
@@ -16,11 +17,10 @@ class PipDesktopWindowManager with TrayListener, WindowListener {
 
   static bool _isPetModeActive = false;
   static bool _isClickThroughActive = false;
-  static bool _isDoNotDisturb = false;
 
   static bool get isPetModeActive => _isPetModeActive;
   static bool get isClickThroughActive => _isClickThroughActive;
-  static bool get isDoNotDisturb => _isDoNotDisturb;
+  static bool get isDoNotDisturb => PresenceSettings.instance.mode == PresenceMode.quiet;
 
   static const String _prefPosX = 'pip_window_pos_x';
   static const String _prefPosY = 'pip_window_pos_y';
@@ -77,10 +77,8 @@ class PipDesktopWindowManager with TrayListener, WindowListener {
         modifiers: [HotKeyModifier.control, HotKeyModifier.shift],
         scope: HotKeyScope.system,
       );
-      await hotKeyManager.register(
-        hotKey,
-        keyDownHandler: (_) => togglePetMode(),
-      );
+      // Summon Pip from anywhere, already listening. Pet mode stays in the tray.
+      await hotKeyManager.register(hotKey, keyDownHandler: (_) => summon());
     } catch (e) {
       debugPrint("Desktop windowManager initialize error: $e");
     }
@@ -91,6 +89,7 @@ class PipDesktopWindowManager with TrayListener, WindowListener {
       await trayManager.setIcon('assets/icons/app_icon.ico');
       final menu = Menu(items: [
         MenuItem(key: 'show_pip', label: 'Show Pip'),
+        MenuItem(key: 'talk', label: 'Talk to Pip (Ctrl+Shift+P)'),
         MenuItem(key: 'toggle_pet', label: 'Toggle Pet Mode'),
         MenuItem(key: 'toggle_dnd', label: 'Toggle Do Not Disturb'),
         MenuItem.separator(),
@@ -200,6 +199,22 @@ class PipDesktopWindowManager with TrayListener, WindowListener {
     await windowManager.setIgnoreMouseEvents(enable, forward: true);
   }
 
+  /// Called after [summon] brings Pip forward; the app opens the mic.
+  static VoidCallback? onSummon;
+
+  /// Brings Pip to the front (from the tray, behind other windows, or pet
+  /// mode) and asks the app to start listening.
+  static Future<void> summon() async {
+    try {
+      if (_isPetModeActive) await exitAmbientPetMode();
+      await windowManager.show();
+      await windowManager.focus();
+    } catch (e) {
+      debugPrint('Summon failed: $e');
+    }
+    onSummon?.call();
+  }
+
   static Future<void> togglePetMode() async {
     if (_isPetModeActive) {
       await exitAmbientPetMode();
@@ -213,10 +228,12 @@ class PipDesktopWindowManager with TrayListener, WindowListener {
     if (menuItem.key == 'show_pip') {
       await windowManager.show();
       await windowManager.focus();
+    } else if (menuItem.key == 'talk') {
+      await summon();
     } else if (menuItem.key == 'toggle_pet') {
       await togglePetMode();
     } else if (menuItem.key == 'toggle_dnd') {
-      _isDoNotDisturb = !_isDoNotDisturb;
+      await PresenceSettings.instance.toggleQuiet();
     } else if (menuItem.key == 'quit') {
       await windowManager.destroy();
     }
