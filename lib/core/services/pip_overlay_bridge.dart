@@ -89,8 +89,15 @@ class PipOverlayBridge {
     if (data is String) {
       try {
         final decoded = jsonDecode(data);
-        if (decoded is Map<String, dynamic> && decoded['action'] == 'tap_listen') {
-          handleTapListen();
+        if (decoded is! Map<String, dynamic>) return;
+        switch (decoded['action']) {
+          case 'tap_listen':
+            handleTapListen();
+          case 'stop_listen':
+            audioCoordinator.stopListening();
+          case 'quick':
+            final query = decoded['query'];
+            if (query is String && query.isNotEmpty) cubit.handleQuery(query);
         }
       } catch (e) {
         debugPrint('Overlay event parse error: $e');

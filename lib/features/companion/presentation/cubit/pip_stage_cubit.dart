@@ -9,7 +9,6 @@ import '../../../../core/domain/pip_emotion_state.dart';
 import '../../../../core/services/email_service.dart';
 import '../../../../core/services/llm_registry_service.dart';
 import '../../../../core/services/llm_error_messages.dart';
-import '../../../../core/services/pip_home_widget_service.dart';
 import '../../../../core/services/pip_profile_service.dart';
 import '../../../../core/services/pip_sfx_service.dart';
 import '../../../../core/services/pip_tool_registry.dart';
@@ -64,13 +63,7 @@ class PipStageCubit extends Cubit<PipStageState> {
     _chatEngine = PipChatEngine(toolCoordinator: _toolCoordinator);
     _voice.enabled.then((on) => isClosed ? null : emit(state.copyWith(isSilentCompanionMode: !on)));
     _initGreeting();
-    _syncHomeWidget();
   }
-
-  void _syncHomeWidget() => PipHomeWidgetService.updateWidget(
-      mood: state.currentMood.name,
-      statusText: state.statusText,
-      pendingTasksCount: taskProvider.allTasks.where((t) => !t.isCompleted).length);
 
   void _initGreeting() => speak("Hi there! I'm Pip, your desk companion. What are we building or tackling today?", isHappy: true);
 

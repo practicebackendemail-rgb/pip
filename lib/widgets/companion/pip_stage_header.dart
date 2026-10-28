@@ -135,7 +135,7 @@ class PipStageHeader extends StatelessWidget {
                       constraints: const BoxConstraints(),
                       tooltip: PipDesktopWindowManager.isPetModeActive
                           ? "Expand to Window"
-                          : "Ambient Pet Mode",
+                          : "Mini window",
                       onPressed: () async {
                         PipSfxService.chirp();
                         await PipDesktopWindowManager.togglePetMode();

@@ -1,10 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
-    android:initialKeyguardLayout="@layout/pip_app_widget"
+    android:description="@string/pip_widget_small_description"
     android:initialLayout="@layout/pip_app_widget"
-    android:minWidth="160dp"
-    android:minHeight="110dp"
+    android:minWidth="110dp"
+    android:minHeight="40dp"
+    android:targetCellWidth="2"
+    android:targetCellHeight="1"
+    android:previewLayout="@layout/pip_app_widget"
     android:previewImage="@mipmap/ic_launcher"
-    android:resizeMode="horizontal|vertical"
+    android:resizeMode="horizontal"
     android:updatePeriodMillis="1800000"
     android:widgetCategory="home_screen" />

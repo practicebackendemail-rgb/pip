@@ -112,17 +112,13 @@ class _PipDeskCompanionState extends State<PipDeskCompanion> with SingleTickerPr
       ),
     );
 
-    // Desktop pet: Pip itself catches the mouse, everything else clicks through.
+    // Mini and Peek on Windows: drag Pip to move the window.
     if (!kIsWeb && Platform.isWindows && PipDesktopWindowManager.isPetModeActive) {
-      return MouseRegion(
-        onEnter: (_) => PipDesktopWindowManager.setClickThrough(false),
-        onExit: (_) => PipDesktopWindowManager.setClickThrough(true),
-        child: GestureDetector(
-          onPanStart: (_) => windowManager.startDragging(),
-          onPanEnd: (_) => PipDesktopWindowManager.saveCurrentPosition(),
-          onTap: widget.onTap,
-          child: content,
-        ),
+      return GestureDetector(
+        onPanStart: (_) => windowManager.startDragging(),
+        onPanEnd: (_) => PipDesktopWindowManager.saveCurrentPosition(),
+        onTap: widget.onTap,
+        child: content,
       );
     }
     content = GestureDetector(onTap: widget.onTap == null ? null : _tap, child: content);

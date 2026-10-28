@@ -35,8 +35,8 @@ class PipOverlayManager {
       flag: OverlayFlag.defaultFlag,
       visibility: NotificationVisibility.visibilityPublic,
       positionGravity: PositionGravity.auto,
-      height: 220,
-      width: 220,
+      height: 84,
+      width: 84,
     );
   }
 

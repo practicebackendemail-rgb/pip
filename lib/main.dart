@@ -29,6 +29,8 @@ import 'features/activity/data/activity_data.dart';
 import 'features/activity/presentation/activity_cubit.dart';
 import 'features/companion/presentation/cubit/pip_stage_cubit.dart';
 import 'features/companion/presentation/widgets/pip_screen_context.dart';
+import 'features/outside/desktop_sizes.dart';
+import 'features/outside/home_widget_sync.dart';
 import 'features/presence/presence_mode.dart';
 import 'features/voice/voice_wiring.dart';
 import 'widgets/companion/pip_overlay_widget.dart';
@@ -76,6 +78,8 @@ class _PersonalAssistantAppState extends State<PersonalAssistantApp>
   late final PipStageCubit _stageCubit;
   late final GoRouter _router = buildAppRouter(OnboardingGate.instance, navigatorKey: pipNavigatorKey);
   PipOverlayBridge? _overlayBridge;
+  late final HomeWidgetSync _homeWidget =
+      HomeWidgetSync(cubit: _stageCubit, tasks: getIt<TaskProvider>(), onListen: _listenFromOutside);
   late final EmbeddingBackfillService _backfill;
   String? _embeddingProviderId;
   Timer? _driftTimer;
@@ -108,12 +112,8 @@ class _PersonalAssistantAppState extends State<PersonalAssistantApp>
     _logSession('session_started');
     _voice.start();
     // Ctrl+Shift+P (or the tray) summons Pip already listening.
-    PipDesktopWindowManager.onSummon = () {
-      _router.go(AppRoutes.home);
-      getIt<PipAudioCoordinator>().startActiveListening(
-        onQuery: (q) => _stageCubit.handleQuery(PipScreenContext.withContext(q)),
-      );
-    };
+    PipDesktopWindowManager.onSummon = _listenFromOutside;
+    _homeWidget.start();
     _notificationTaps = PipNotificationService.openedItems.listen((_) => _openAlarms());
     // Reflection, then embedding backfill, once the first frame is up
     WidgetsBinding.instance.addPostFrameCallback((_) async {
@@ -129,6 +129,14 @@ class _PersonalAssistantAppState extends State<PersonalAssistantApp>
       _embeddingProviderId = registry.getEmbeddingProvider().id;
       await _backfill.run();
     });
+  }
+
+  /// The widget mic, hotkey or tray asked Pip to listen.
+  void _listenFromOutside() {
+    if (PipDesktopWindowManager.size.value == DesktopSize.full) _router.go(AppRoutes.home);
+    getIt<PipAudioCoordinator>().startActiveListening(
+      onQuery: (q) => _stageCubit.handleQuery(PipScreenContext.withContext(q)),
+    );
   }
 
   /// Re-embeds memories when the user switches embedding provider.
@@ -156,6 +164,7 @@ class _PersonalAssistantAppState extends State<PersonalAssistantApp>
     _notificationTaps?.cancel();
     _voice.dispose();
     _overlayBridge?.dispose();
+    _homeWidget.dispose();
     _stageCubit.close();
     _activity.close();
     super.dispose();
@@ -168,7 +177,7 @@ class _PersonalAssistantAppState extends State<PersonalAssistantApp>
       _logSession('session_started');
       // Trigger reflection check and update emotion drift on app resume
       getIt<PipEmotionState>().evaluateTimeDrift();
-      getIt<TaskProvider>().checkOverdueTasks();
+      getIt<TaskProvider>().reloadFromDisk();
       getIt<NightlyReflectionService>().runReflectionIfNeeded();
       // Phase 6: Sync cloud/local state on app resume (cooldown managed internally)
       getIt<PipCloudSyncCoordinator>().syncNow();
@@ -187,6 +196,7 @@ class _PersonalAssistantAppState extends State<PersonalAssistantApp>
         debugShowCheckedModeBanner: false,
         theme: PipTheme.dark,
         routerConfig: _router,
+        builder: (context, child) => DesktopSizeSwitch(child: child ?? const SizedBox.shrink()),
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
       ),

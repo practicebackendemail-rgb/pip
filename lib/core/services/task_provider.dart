@@ -37,6 +37,13 @@ class TaskProvider extends ChangeNotifier {
     _loadTasks();
   }
 
+  /// Re-reads tasks saved outside this isolate (the home widget ticks tasks
+  /// off in the background).
+  Future<void> reloadFromDisk() async {
+    _tasks.clear();
+    await _loadTasks();
+  }
+
   Future<void> _loadTasks() async {
     final prefs = await SharedPreferences.getInstance();
     _completedTodayCount = prefs.getInt('completed_today_count') ?? 0;

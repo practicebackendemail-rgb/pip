@@ -11,14 +11,25 @@ import 'package:tray_manager/tray_manager.dart';
 import 'package:window_manager/window_manager.dart';
 
 /// Service responsible for managing Pip's desktop window modes on Windows.
+/// The three Windows sizes: the whole app, a small always-on-top card, and
+/// just Pip's eyes resting above the taskbar.
+enum DesktopSize { full, mini, peek }
+
 class PipDesktopWindowManager with TrayListener, WindowListener {
   PipDesktopWindowManager._();
   static final PipDesktopWindowManager instance = PipDesktopWindowManager._();
 
-  static bool _isPetModeActive = false;
   static bool _isClickThroughActive = false;
 
-  static bool get isPetModeActive => _isPetModeActive;
+  /// Current size; the app swaps its UI when this changes.
+  static final ValueNotifier<DesktopSize> size = ValueNotifier(DesktopSize.full);
+
+  static const Size fullSize = Size(1180, 780);
+  static const Size miniSize = Size(380, 230);
+  static const Size peekSize = Size(150, 64);
+
+  /// Mini or Peek: frameless, always on top, out of the taskbar.
+  static bool get isPetModeActive => size.value != DesktopSize.full;
   static bool get isClickThroughActive => _isClickThroughActive;
   static bool get isDoNotDisturb => PresenceSettings.instance.mode == PresenceMode.quiet;
 
@@ -90,7 +101,11 @@ class PipDesktopWindowManager with TrayListener, WindowListener {
       final menu = Menu(items: [
         MenuItem(key: 'show_pip', label: 'Show Pip'),
         MenuItem(key: 'talk', label: 'Talk to Pip (Ctrl+Shift+P)'),
-        MenuItem(key: 'toggle_pet', label: 'Toggle Pet Mode'),
+        MenuItem.separator(),
+        MenuItem(key: 'size_full', label: 'Full window'),
+        MenuItem(key: 'size_mini', label: 'Mini (always on top)'),
+        MenuItem(key: 'size_peek', label: 'Peek (eyes on the taskbar)'),
+        MenuItem.separator(),
         MenuItem(key: 'toggle_dnd', label: 'Toggle Do Not Disturb'),
         MenuItem.separator(),
         MenuItem(key: 'quit', label: 'Exit Application'),
@@ -121,23 +136,68 @@ class PipDesktopWindowManager with TrayListener, WindowListener {
     return prefs.getBool(_prefLaunchStartup) ?? false;
   }
 
-  static Future<void> enterAmbientPetMode() async {
-    if (kIsWeb || !Platform.isWindows) return;
+  /// True while Mini is showing because the mouse hovered Peek; Mini then
+  /// sinks back to Peek when the mouse leaves.
+  static bool raisedFromPeek = false;
 
+  static Future<void> raiseFromPeek() async {
+    await setDesktopSize(DesktopSize.mini);
+    raisedFromPeek = true;
+  }
+
+  /// Switches between Full, Mini and Peek.
+  static Future<void> setDesktopSize(DesktopSize next) async {
+    if (kIsWeb || !Platform.isWindows || next == size.value) return;
+    raisedFromPeek = false;
+    final from = size.value;
     try {
-      _isPetModeActive = true;
-      await windowManager.setTitleBarStyle(TitleBarStyle.hidden);
-      await windowManager.setSize(const Size(300, 340));
-      await windowManager.setAlwaysOnTop(true);
-      await windowManager.setSkipTaskbar(true);
-      await windowManager.setBackgroundColor(Colors.transparent);
-      await windowManager.setHasShadow(false);
-
-      await _restorePositionOrAlign();
+      if (from == DesktopSize.mini) await saveCurrentPosition();
+      if (next == DesktopSize.full) {
+        size.value = next;
+        await windowManager.setIgnoreMouseEvents(false);
+        await windowManager.setSkipTaskbar(false);
+        await windowManager.setAlwaysOnTop(false);
+        await windowManager.setTitleBarStyle(TitleBarStyle.normal);
+        await windowManager.setHasShadow(true);
+        await windowManager.setSize(fullSize);
+        await windowManager.center();
+      } else {
+        if (from == DesktopSize.full) {
+          await windowManager.setTitleBarStyle(TitleBarStyle.hidden);
+          await windowManager.setSkipTaskbar(true);
+          await windowManager.setAlwaysOnTop(true);
+          await windowManager.setBackgroundColor(Colors.transparent);
+          await windowManager.setHasShadow(false);
+        }
+        size.value = next;
+        if (next == DesktopSize.mini) {
+          await windowManager.setSize(miniSize);
+          await _restorePositionOrAlign();
+        } else {
+          await windowManager.setSize(peekSize);
+          await _restOnTaskbar();
+        }
+      }
+      await windowManager.show();
     } catch (e) {
-      debugPrint("Error entering ambient pet mode: $e");
+      debugPrint('Changing desktop size failed: $e');
     }
   }
+
+  /// Bottom-right corner of the work area, so Pip sits right on the taskbar.
+  static Future<void> _restOnTaskbar() async {
+    final d = await screenRetriever.getPrimaryDisplay();
+    final pos = d.visiblePosition ?? Offset.zero;
+    final area = d.visibleSize ?? d.size;
+    await windowManager.setPosition(Offset(
+      pos.dx + area.width - peekSize.width - 24,
+      pos.dy + area.height - peekSize.height,
+    ));
+  }
+
+  static Future<void> enterAmbientPetMode() => setDesktopSize(DesktopSize.mini);
+
+  static Future<void> exitAmbientPetMode() => setDesktopSize(DesktopSize.full);
 
   static Future<void> _restorePositionOrAlign() async {
     final prefs = await SharedPreferences.getInstance();
@@ -177,24 +237,8 @@ class PipDesktopWindowManager with TrayListener, WindowListener {
     }
   }
 
-  static Future<void> exitAmbientPetMode() async {
-    if (kIsWeb || !Platform.isWindows) return;
-
-    try {
-      _isPetModeActive = false;
-      await windowManager.setSkipTaskbar(false);
-      await windowManager.setIgnoreMouseEvents(false);
-      await windowManager.setTitleBarStyle(TitleBarStyle.normal);
-      await windowManager.setSize(const Size(1180, 780));
-      await windowManager.setAlwaysOnTop(false);
-      await windowManager.center();
-    } catch (e) {
-      debugPrint("Error exiting ambient pet mode: $e");
-    }
-  }
-
   static Future<void> setClickThrough(bool enable) async {
-    if (kIsWeb || !Platform.isWindows || !_isPetModeActive) return;
+    if (kIsWeb || !Platform.isWindows || !isPetModeActive) return;
     _isClickThroughActive = enable;
     await windowManager.setIgnoreMouseEvents(enable, forward: true);
   }
@@ -206,7 +250,8 @@ class PipDesktopWindowManager with TrayListener, WindowListener {
   /// mode) and asks the app to start listening.
   static Future<void> summon() async {
     try {
-      if (_isPetModeActive) await exitAmbientPetMode();
+      // Peek rises to Mini; Mini and Full stay as they are.
+      if (size.value == DesktopSize.peek) await setDesktopSize(DesktopSize.mini);
       await windowManager.show();
       await windowManager.focus();
     } catch (e) {
@@ -215,13 +260,8 @@ class PipDesktopWindowManager with TrayListener, WindowListener {
     onSummon?.call();
   }
 
-  static Future<void> togglePetMode() async {
-    if (_isPetModeActive) {
-      await exitAmbientPetMode();
-    } else {
-      await enterAmbientPetMode();
-    }
-  }
+  static Future<void> togglePetMode() =>
+      setDesktopSize(isPetModeActive ? DesktopSize.full : DesktopSize.mini);
 
   @override
   void onTrayMenuItemClick(MenuItem menuItem) async {
@@ -230,8 +270,12 @@ class PipDesktopWindowManager with TrayListener, WindowListener {
       await windowManager.focus();
     } else if (menuItem.key == 'talk') {
       await summon();
-    } else if (menuItem.key == 'toggle_pet') {
-      await togglePetMode();
+    } else if (menuItem.key == 'size_full') {
+      await setDesktopSize(DesktopSize.full);
+    } else if (menuItem.key == 'size_mini') {
+      await setDesktopSize(DesktopSize.mini);
+    } else if (menuItem.key == 'size_peek') {
+      await setDesktopSize(DesktopSize.peek);
     } else if (menuItem.key == 'toggle_dnd') {
       await PresenceSettings.instance.toggleQuiet();
     } else if (menuItem.key == 'quit') {
