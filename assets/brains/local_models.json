@@ -1,0 +1,70 @@
+{
+  "version": 1,
+  "models": [
+    {
+      "id": "gemma-4-e2b",
+      "name": "Gemma 4 E2B",
+      "maker": "Google",
+      "url": "https://huggingface.co/litert-community/gemma-4-E2B-it-litert-lm/resolve/main/gemma-4-E2B-it.litertlm",
+      "type": "gemmaIt",
+      "sizeMb": 2400,
+      "ramGb": 6,
+      "smarts": 3,
+      "speed": 3,
+      "goodAt": "Summaries, simple tools, sorting notifications",
+      "license": "Apache 2.0"
+    },
+    {
+      "id": "qwen-2.5-1.5b",
+      "name": "Qwen 2.5 1.5B",
+      "maker": "Alibaba",
+      "url": "https://huggingface.co/litert-community/Qwen2.5-1.5B-Instruct/resolve/main/Qwen2.5-1.5B-Instruct_multi-prefill-seq_q8_ekv4096.litertlm",
+      "type": "qwen",
+      "sizeMb": 1600,
+      "ramGb": 4,
+      "smarts": 2,
+      "speed": 4,
+      "goodAt": "Mid-range phones, short answers",
+      "license": "Apache 2.0"
+    },
+    {
+      "id": "qwen3-0.6b",
+      "name": "Qwen3 0.6B",
+      "maker": "Alibaba",
+      "url": "https://huggingface.co/litert-community/Qwen3-0.6B/resolve/main/Qwen3-0.6B.litertlm",
+      "type": "qwen3",
+      "sizeMb": 586,
+      "ramGb": 3,
+      "smarts": 1,
+      "speed": 5,
+      "goodAt": "Older phones, quick sorting only",
+      "license": "Apache 2.0"
+    },
+    {
+      "id": "gemma-4-e4b",
+      "name": "Gemma 4 E4B",
+      "maker": "Google",
+      "url": "https://huggingface.co/litert-community/gemma-4-E4B-it-litert-lm/resolve/main/gemma-4-E4B-it.litertlm",
+      "type": "gemmaIt",
+      "sizeMb": 4300,
+      "ramGb": 10,
+      "smarts": 4,
+      "speed": 2,
+      "goodAt": "Best on-device answers; needs a flagship or a PC",
+      "license": "Apache 2.0"
+    },
+    {
+      "id": "phi-4-mini",
+      "name": "Phi-4 mini",
+      "maker": "Microsoft",
+      "url": "https://huggingface.co/litert-community/Phi-4-mini-instruct/resolve/main/Phi-4-mini-instruct_multi-prefill-seq_q8_ekv4096.litertlm",
+      "type": "general",
+      "sizeMb": 3900,
+      "ramGb": 10,
+      "smarts": 4,
+      "speed": 2,
+      "goodAt": "Reasoning and maths; slow on phones",
+      "license": "MIT"
+    }
+  ]
+}

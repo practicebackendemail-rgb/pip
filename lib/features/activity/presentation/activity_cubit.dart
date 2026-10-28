@@ -1,5 +1,6 @@
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../brains/data/pip_brains.dart';
 import '../domain/activity_describer.dart';
 import '../domain/activity_entry.dart';
 import '../domain/activity_repository.dart';
@@ -38,6 +39,7 @@ class ActivityCubit extends Cubit<ActivityState> {
   }
 
   Future<void> record(ActivityEntry entry) async {
+    if (entry.ranOn == null) entry = entry.ranOnBrain(PipBrains.instance.lastUsed?.name);
     final entries = [entry, ...state.entries];
     emit(state.copyWith(entries: entries, latest: entry));
     await repository.save(entries);

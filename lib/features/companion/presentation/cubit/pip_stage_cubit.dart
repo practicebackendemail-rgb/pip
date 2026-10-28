@@ -22,6 +22,8 @@ import '../../../../widgets/pip_params.dart';
 import '../../../activity/presentation/activity_cubit.dart';
 import '../../domain/pip_action_speech.dart';
 import '../../domain/pip_briefing.dart';
+import '../../../brains/data/pip_brains.dart';
+import '../../../brains/domain/brain_routing.dart';
 import '../../../notifications/data/notification_inbox.dart';
 import '../../domain/pip_character_bible.dart';
 import '../../domain/pip_structured_reply.dart';
@@ -159,7 +161,7 @@ class PipStageCubit extends Cubit<PipStageState> {
     PipSfxService.thinking();
 
     try {
-      final provider = llmRegistry.getActiveProvider();
+      final provider = PipBrains.instance.providerFor(PipBrains.jobFor(userText), llmRegistry);
       final embeddingProvider = llmRegistry.getEmbeddingProvider();
 
       final activeRules = await memoryRepository.getActiveRules();
@@ -201,7 +203,7 @@ class PipStageCubit extends Cubit<PipStageState> {
     } catch (e) {
       emit(state.copyWith(statusText: "Pip had trouble responding", currentMood: PipMood.unsure));
       debugPrint('Pip reply failed: $e');
-      speak(describeLlmError(e));
+      speak(e is BrainUnavailable ? e.message : describeLlmError(e));
     } finally {
       if (state.isLoading) emit(state.copyWith(isLoading: false));
     }
@@ -276,16 +278,18 @@ class PipStageCubit extends Cubit<PipStageState> {
     final tasks = taskProvider.allTasks.where((t) => !t.isCompleted).toList();
 
     try {
-      final text = await PipBriefing.compose(llmRegistry.getActiveProvider(),
+      final provider = PipBrains.instance.providerFor(BrainJob.briefing, llmRegistry);
+      final keepPrivate = PipBrains.instance.cloudMustNotSeePrivate;
+      final text = await PipBriefing.compose(provider,
           tasks: tasks.map((t) => t.title).toList(), emails: emails,
-          notifications: await NotificationInbox.instance.briefingLines());
+          notifications: await NotificationInbox.instance.briefingLines(countsOnly: keepPrivate));
       ActivityRecorder.entry(PipBriefing.activity(tasks: tasks.length, emails: emails.length));
       emit(state.copyWith(briefingContent: text, isLoading: false, statusText: "Briefing ready", currentMood: PipMood.happy));
       speak("Here's your day. Ask me about anything in it.", isHappy: true);
     } catch (e) {
       emit(state.copyWith(isLoading: false, statusText: "Failed to generate briefing", currentMood: PipMood.unsure));
       debugPrint('Briefing failed: $e');
-      speak(describeLlmError(e));
+      speak(e is BrainUnavailable ? e.message : describeLlmError(e));
     }
   }
 

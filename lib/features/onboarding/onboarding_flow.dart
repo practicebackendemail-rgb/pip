@@ -11,6 +11,7 @@ import '../../widgets/pip_params.dart';
 import 'steps/backup_step.dart';
 import 'steps/brain_step.dart';
 import 'steps/connections_step.dart';
+import 'steps/local_brain_step.dart';
 import 'steps/name_step.dart';
 
 /// What a step tells the flow: Pip's line and mood, and whether Continue is allowed.
@@ -43,7 +44,7 @@ class OnboardingFlow extends StatefulWidget {
 }
 
 class _OnboardingFlowState extends State<OnboardingFlow> {
-  static const int _stepCount = 4;
+  static const int _stepCount = 5;
   final PageController _pages = PageController();
   final List<GlobalKey> _keys = List.generate(_stepCount, (_) => GlobalKey());
   late final List<PipStepState> _states;
@@ -62,6 +63,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
         mood: PipMood.happy,
       ),
       const PipStepState('Pick a brain for me, paste its key, and tap Check key.'),
+      const PipStepState("Want a private brain on this device too? It's optional and keeps downloading after you continue."),
       const PipStepState('Want a backup password? It locks your backups so only you can open them.'),
       const PipStepState('What should I help with? All optional, you can connect these later.'),
     ];
@@ -134,8 +136,9 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
             children: [
               NameStep(key: _keys[0], onState: (s) => _onStepChanged(0, s)),
               BrainStep(key: _keys[1], onState: (s) => _onStepChanged(1, s), onSkip: () => _go(2)),
-              BackupStep(key: _keys[2], onState: (s) => _onStepChanged(2, s)),
-              ConnectionsStep(key: _keys[3], onState: (s) => _onStepChanged(3, s)),
+              LocalBrainStep(key: _keys[2], onState: (s) => _onStepChanged(2, s)),
+              BackupStep(key: _keys[3], onState: (s) => _onStepChanged(3, s)),
+              ConnectionsStep(key: _keys[4], onState: (s) => _onStepChanged(4, s)),
             ],
           ),
         ),

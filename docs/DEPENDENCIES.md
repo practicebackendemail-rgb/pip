@@ -9,6 +9,7 @@ Comprehensive registry of all third-party dependencies, versions, and architectu
 - `equatable: ^3.0.0` — Value-based equality checking for models, events, and states.
 - `get_it: ^9.3.0` & `injectable: ^3.0.0` — Compile-time safe service locator and dependency injection.
 - `provider: ^6.1.5+1` — Reactive state provision for lightweight UI trees.
+- `flutter_gemma: ^0.13.6` — On-device brain: downloads LiteRT-LM models (Gemma, Qwen, Phi) from Hugging Face and runs them locally on Android, iOS and desktop. Catalogue in `assets/brains/local_models.json`.
 
 ## 2. Storage & Cryptography
 - `sqflite_sqlcipher: ^3.4.1` — 256-bit AES encrypted SQLite database storage.

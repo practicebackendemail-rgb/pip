@@ -18,6 +18,7 @@ abstract final class AppRoutes {
   static const String settings = '/settings';
   static const String settingsPersonality = '/settings/personality';
   static const String settingsAiModel = '/settings/ai-model';
+  static const String settingsBrains = '/settings/brains';
   static const String settingsConnections = '/settings/connections';
   static const String settingsBackup = '/settings/backup';
   static const String settingsVoice = '/settings/voice';

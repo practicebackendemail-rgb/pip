@@ -90,6 +90,14 @@ void main() {
       expect(lines, ['WhatsApp: Sam']);
     });
 
+    test('counts-only lines keep contents on the device', () async {
+      SharedPreferences.setMockInitialValues(stored([
+        raw('WhatsApp', 'Sam: secret', package: 'com.whatsapp'),
+        raw('WhatsApp', 'Mum: call me', package: 'com.whatsapp'),
+      ]));
+      expect(await NotificationInbox().briefingLines(countsOnly: true), ['2 from WhatsApp']);
+    });
+
     test('a corrupt inbox reads as empty rather than crashing', () async {
       SharedPreferences.setMockInitialValues({NotificationInbox.inboxKey: '{not json'});
       expect(await NotificationInbox().all(), isEmpty);

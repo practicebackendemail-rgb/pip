@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../features/brains/data/local_brain.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/localization/l10n_extension.dart';
 import '../../core/routes/app_routes.dart';
@@ -44,11 +45,17 @@ class PipSettingsScreen extends StatelessWidget {
                   ),
                 ),
                 const _Section('Brain'),
-                _Row(
-                  icon: Icons.memory_outlined,
-                  title: 'AI model',
-                  value: _providerLabel(llm.activeProviderId),
-                  onTap: () => context.push(AppRoutes.settingsAiModel),
+                ListenableBuilder(
+                  listenable: LocalBrain.instance,
+                  builder: (context, _) => _Row(
+                    icon: Icons.memory_outlined,
+                    title: context.l10n.brainsTitle,
+                    value: [
+                      if (LocalBrain.instance.active != null) LocalBrain.instance.active!.name,
+                      _providerLabel(llm.activeProviderId),
+                    ].join(' + '),
+                    onTap: () => context.push(AppRoutes.settingsBrains),
+                  ),
                 ),
                 _Row(
                   icon: Icons.record_voice_over_outlined,

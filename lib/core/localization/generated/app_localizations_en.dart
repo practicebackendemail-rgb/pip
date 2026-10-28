@@ -334,4 +334,185 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get queryWhatDidIMiss => 'What did I miss? Check my notifications.';
+
+  @override
+  String get ranOnDevice => 'on-device';
+
+  @override
+  String get ranInCloud => 'cloud';
+
+  @override
+  String get brainsTitle => 'Brains';
+
+  @override
+  String get brainsIntro =>
+      'I have two brains. The one on your device keeps things private; the cloud one is smarter for big jobs.';
+
+  @override
+  String get brainsLocalHeading => 'On-device brain';
+
+  @override
+  String get brainsLocalDetail =>
+      'Private. Runs on this device and works offline. Free, but uses storage and battery.';
+
+  @override
+  String get brainsCloudHeading => 'Cloud brain';
+
+  @override
+  String get brainsCloudDetail =>
+      'Smarter for big jobs. Uses your own key; you pay the provider.';
+
+  @override
+  String get brainsRoutingHeading => 'Who handles what';
+
+  @override
+  String get brainsRoutingDetail =>
+      'Private data never goes to the cloud unless you say so here.';
+
+  @override
+  String brainsYourDevice(String ram) {
+    return 'This device has $ram GB of memory.';
+  }
+
+  @override
+  String get brainsNotSupported =>
+      'On-device brains aren\'t available on this platform yet.';
+
+  @override
+  String get fitRecommended => 'Recommended';
+
+  @override
+  String get fitGood => 'Fits';
+
+  @override
+  String get fitHeavy => 'Heavy';
+
+  @override
+  String get fitTooBig => 'Too big';
+
+  @override
+  String modelDownload(String size) {
+    return 'Download $size';
+  }
+
+  @override
+  String get modelUse => 'Use';
+
+  @override
+  String get modelInUse => 'In use';
+
+  @override
+  String get modelRemove => 'Delete download';
+
+  @override
+  String modelDownloading(int percent) {
+    return 'Downloading $percent%';
+  }
+
+  @override
+  String get modelSize => 'Download';
+
+  @override
+  String get modelMemory => 'Needs';
+
+  @override
+  String modelMemoryValue(int gb) {
+    return '$gb GB memory';
+  }
+
+  @override
+  String get modelSmarts => 'Smarts';
+
+  @override
+  String get modelSpeed => 'Speed';
+
+  @override
+  String get modelGoodAt => 'Good at';
+
+  @override
+  String get modelCost => 'Cost';
+
+  @override
+  String get modelFree => 'Free forever';
+
+  @override
+  String get modelLicense => 'Licence';
+
+  @override
+  String get cloudNoKey =>
+      'No cloud brain yet. Add a key to unlock planning, briefings and harder questions.';
+
+  @override
+  String get cloudAddKey => 'Add a key';
+
+  @override
+  String get cloudChange => 'Change key or model';
+
+  @override
+  String cloudPrice(String input, String output) {
+    return '\$$input in, \$$output out per million tokens';
+  }
+
+  @override
+  String get cloudFreeTier => 'Free tier';
+
+  @override
+  String cloudPerRequest(String cost) {
+    return 'About $cost per request';
+  }
+
+  @override
+  String cloudMonthly(int count, String cost) {
+    return 'This month so far: $count cloud requests, about $cost';
+  }
+
+  @override
+  String get cloudUnknownModel =>
+      'I don\'t know this model\'s prices. Check your provider\'s pricing page.';
+
+  @override
+  String get jobPrivate => 'Notifications and memories';
+
+  @override
+  String get jobCommands => 'Everyday commands';
+
+  @override
+  String get jobBriefing => 'Daily briefing';
+
+  @override
+  String get jobBigJobs => 'Planning, drafts, long answers';
+
+  @override
+  String get brainLocal => 'On-device';
+
+  @override
+  String get brainCloud => 'Cloud';
+
+  @override
+  String get presetLabel => 'Presets';
+
+  @override
+  String get presetPrivate => 'Private';
+
+  @override
+  String get presetBalanced => 'Balanced';
+
+  @override
+  String get presetMaxSmarts => 'Max smarts';
+
+  @override
+  String get fallbackLabel => 'If that brain can\'t run';
+
+  @override
+  String get fallbackAsk => 'Tell me';
+
+  @override
+  String get fallbackUseOther => 'Use the other one';
+
+  @override
+  String get fallbackFail => 'Don\'t run it';
+
+  @override
+  String get fallbackNote =>
+      'Private data still won\'t go to the cloud on its own.';
 }

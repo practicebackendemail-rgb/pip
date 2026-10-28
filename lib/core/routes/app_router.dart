@@ -15,6 +15,7 @@ import '../../screens/splash_screen.dart';
 import '../../screens/welcome_screen.dart';
 import '../../screens/what_pip_knows_screen.dart';
 import '../theme/app_motion_tokens.dart';
+import '../../features/brains/presentation/brains_page.dart';
 import 'app_routes.dart';
 import 'onboarding_gate.dart';
 
@@ -55,6 +56,7 @@ GoRouter buildAppRouter(OnboardingGate gate, {GlobalKey<NavigatorState>? navigat
       full(AppRoutes.settings, (_, _) => const PipSettingsScreen()),
       full(AppRoutes.settingsPersonality, (_, _) => const PersonalityPage()),
       full(AppRoutes.settingsAiModel, (_, _) => const AiModelPage()),
+      full(AppRoutes.settingsBrains, (_, _) => const BrainsPage()),
       full(AppRoutes.settingsConnections, (_, _) => const ConnectionsPage()),
       full(AppRoutes.settingsBackup, (_, _) => const BackupPage()),
       full(AppRoutes.settingsVoice, (_, _) => const VoiceSettingsPage()),

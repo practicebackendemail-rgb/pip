@@ -72,9 +72,18 @@ class NotificationInbox {
   }
 
   /// Short lines for a briefing: the important ones only.
-  Future<List<String>> briefingLines({int max = 6}) async {
+  /// With [countsOnly] the lines say "2 from WhatsApp" and nothing more, for
+  /// briefings written by a cloud brain while notifications stay on-device.
+  Future<List<String>> briefingLines({int max = 6, bool countsOnly = false}) async {
     final groups = NotificationTriage.sort(await missed());
     final important = [...groups[NotificationPriority.urgent]!, ...groups[NotificationPriority.actionable]!];
+    if (countsOnly) {
+      final perApp = <String, int>{};
+      for (final n in important) {
+        perApp[n.app] = (perApp[n.app] ?? 0) + 1;
+      }
+      return [for (final e in perApp.entries.take(max)) '${e.value} from ${e.key}'];
+    }
     return [for (final n in important.take(max)) '${n.app}: ${n.title}${n.text.isEmpty ? '' : ' — ${n.text}'}'];
   }
 }

@@ -1,5 +1,7 @@
 package com.personal.assistant.personal_assistant
 
+import android.app.ActivityManager
+import android.content.Context
 import android.content.Intent
 import android.media.AudioManager
 import android.provider.Settings
@@ -13,6 +15,7 @@ import kotlin.concurrent.thread
 class MainActivity : FlutterActivity() {
     private val CHANNEL = "com.pip.companion/sfx"
     private val NOTIFICATIONS_CHANNEL = "com.pip.companion/notifications"
+    private val DEVICE_CHANNEL = "com.pip.companion/device"
     private var toneGenerator: ToneGenerator? = null
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
@@ -34,6 +37,18 @@ class MainActivity : FlutterActivity() {
                 "openSettings" -> {
                     startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
                     result.success(true)
+                }
+                else -> result.notImplemented()
+            }
+        }
+
+        // Total RAM, so Pip can say which on-device models fit this phone.
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, DEVICE_CHANNEL).setMethodCallHandler { call, result ->
+            when (call.method) {
+                "totalRam" -> {
+                    val info = ActivityManager.MemoryInfo()
+                    (getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager).getMemoryInfo(info)
+                    result.success(info.totalMem)
                 }
                 else -> result.notImplemented()
             }

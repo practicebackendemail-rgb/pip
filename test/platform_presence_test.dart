@@ -37,6 +37,8 @@ class StubRegistry implements LlmRegistryService {
   @override
   LlmProvider getActiveProvider() => p;
   @override
+  String get activeProviderId => 'ollama';
+  @override
   LlmProvider getEmbeddingProvider() => p;
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);

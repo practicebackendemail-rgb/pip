@@ -27,6 +27,9 @@ class ActivityEntry extends Equatable {
   final ActivityUndo? undo;
   final bool undone;
 
+  /// 'local' or 'cloud': which brain decided on this action, when known.
+  final String? ranOn;
+
   const ActivityEntry({
     required this.id,
     required this.kind,
@@ -35,12 +38,16 @@ class ActivityEntry extends Equatable {
     required this.at,
     this.undo,
     this.undone = false,
+    this.ranOn,
   });
 
   bool get canUndo => undo != null && !undone;
 
   ActivityEntry markUndone() =>
-      ActivityEntry(id: id, kind: kind, title: title, detail: detail, at: at, undo: undo, undone: true);
+      ActivityEntry(id: id, kind: kind, title: title, detail: detail, at: at, undo: undo, undone: true, ranOn: ranOn);
+
+  ActivityEntry ranOnBrain(String? brain) =>
+      ActivityEntry(id: id, kind: kind, title: title, detail: detail, at: at, undo: undo, undone: undone, ranOn: brain);
 
   Map<String, dynamic> toJson() => {
         'id': id,
@@ -50,6 +57,7 @@ class ActivityEntry extends Equatable {
         'at': at.toIso8601String(),
         'undo': undo?.toJson(),
         'undone': undone,
+        if (ranOn != null) 'ranOn': ranOn,
       };
 
   factory ActivityEntry.fromJson(Map<String, dynamic> j) => ActivityEntry(
@@ -60,8 +68,9 @@ class ActivityEntry extends Equatable {
         at: DateTime.parse(j['at'] as String),
         undo: j['undo'] == null ? null : ActivityUndo.fromJson(j['undo'] as Map<String, dynamic>),
         undone: j['undone'] as bool? ?? false,
+        ranOn: j['ranOn'] as String?,
       );
 
   @override
-  List<Object?> get props => [id, kind, title, detail, at, undo, undone];
+  List<Object?> get props => [id, kind, title, detail, at, undo, undone, ranOn];
 }

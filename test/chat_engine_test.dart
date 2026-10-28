@@ -58,6 +58,8 @@ class MockRegistry implements LlmRegistryService {
   @override
   LlmProvider getEmbeddingProvider() => provider;
   @override
+  String get activeProviderId => 'ollama';
+  @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 

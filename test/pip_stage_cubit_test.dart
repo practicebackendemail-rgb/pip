@@ -42,6 +42,8 @@ class StubLlmRegistryService implements LlmRegistryService {
 
   @override
   LlmProvider getActiveProvider() => provider;
+  @override
+  String get activeProviderId => 'ollama';
 
   @override
   LlmProvider getEmbeddingProvider() => provider;

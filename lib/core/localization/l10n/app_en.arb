@@ -132,5 +132,113 @@
   "presenceQuiet": "Quiet",
   "presenceQuietDetail": "No sounds and no spoken voice. Pip still works and shows its words.",
   "chipWhatDidIMiss": "What did I miss?",
-  "queryWhatDidIMiss": "What did I miss? Check my notifications."
+  "queryWhatDidIMiss": "What did I miss? Check my notifications.",
+  "ranOnDevice": "on-device",
+  "ranInCloud": "cloud",
+  "brainsTitle": "Brains",
+  "brainsIntro": "I have two brains. The one on your device keeps things private; the cloud one is smarter for big jobs.",
+  "brainsLocalHeading": "On-device brain",
+  "brainsLocalDetail": "Private. Runs on this device and works offline. Free, but uses storage and battery.",
+  "brainsCloudHeading": "Cloud brain",
+  "brainsCloudDetail": "Smarter for big jobs. Uses your own key; you pay the provider.",
+  "brainsRoutingHeading": "Who handles what",
+  "brainsRoutingDetail": "Private data never goes to the cloud unless you say so here.",
+  "brainsYourDevice": "This device has {ram} GB of memory.",
+  "@brainsYourDevice": {
+    "placeholders": {
+      "ram": {
+        "type": "String"
+      }
+    }
+  },
+  "brainsNotSupported": "On-device brains aren't available on this platform yet.",
+  "fitRecommended": "Recommended",
+  "fitGood": "Fits",
+  "fitHeavy": "Heavy",
+  "fitTooBig": "Too big",
+  "modelDownload": "Download {size}",
+  "@modelDownload": {
+    "placeholders": {
+      "size": {
+        "type": "String"
+      }
+    }
+  },
+  "modelUse": "Use",
+  "modelInUse": "In use",
+  "modelRemove": "Delete download",
+  "modelDownloading": "Downloading {percent}%",
+  "@modelDownloading": {
+    "placeholders": {
+      "percent": {
+        "type": "int"
+      }
+    }
+  },
+  "modelSize": "Download",
+  "modelMemory": "Needs",
+  "modelMemoryValue": "{gb} GB memory",
+  "@modelMemoryValue": {
+    "placeholders": {
+      "gb": {
+        "type": "int"
+      }
+    }
+  },
+  "modelSmarts": "Smarts",
+  "modelSpeed": "Speed",
+  "modelGoodAt": "Good at",
+  "modelCost": "Cost",
+  "modelFree": "Free forever",
+  "modelLicense": "Licence",
+  "cloudNoKey": "No cloud brain yet. Add a key to unlock planning, briefings and harder questions.",
+  "cloudAddKey": "Add a key",
+  "cloudChange": "Change key or model",
+  "cloudPrice": "${input} in, ${output} out per million tokens",
+  "@cloudPrice": {
+    "placeholders": {
+      "input": {
+        "type": "String"
+      },
+      "output": {
+        "type": "String"
+      }
+    }
+  },
+  "cloudFreeTier": "Free tier",
+  "cloudPerRequest": "About {cost} per request",
+  "@cloudPerRequest": {
+    "placeholders": {
+      "cost": {
+        "type": "String"
+      }
+    }
+  },
+  "cloudMonthly": "This month so far: {count} cloud requests, about {cost}",
+  "@cloudMonthly": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "cost": {
+        "type": "String"
+      }
+    }
+  },
+  "cloudUnknownModel": "I don't know this model's prices. Check your provider's pricing page.",
+  "jobPrivate": "Notifications and memories",
+  "jobCommands": "Everyday commands",
+  "jobBriefing": "Daily briefing",
+  "jobBigJobs": "Planning, drafts, long answers",
+  "brainLocal": "On-device",
+  "brainCloud": "Cloud",
+  "presetLabel": "Presets",
+  "presetPrivate": "Private",
+  "presetBalanced": "Balanced",
+  "presetMaxSmarts": "Max smarts",
+  "fallbackLabel": "If that brain can't run",
+  "fallbackAsk": "Tell me",
+  "fallbackUseOther": "Use the other one",
+  "fallbackFail": "Don't run it",
+  "fallbackNote": "Private data still won't go to the cloud on its own."
 }

@@ -687,6 +687,324 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'What did I miss? Check my notifications.'**
   String get queryWhatDidIMiss;
+
+  /// No description provided for @ranOnDevice.
+  ///
+  /// In en, this message translates to:
+  /// **'on-device'**
+  String get ranOnDevice;
+
+  /// No description provided for @ranInCloud.
+  ///
+  /// In en, this message translates to:
+  /// **'cloud'**
+  String get ranInCloud;
+
+  /// No description provided for @brainsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Brains'**
+  String get brainsTitle;
+
+  /// No description provided for @brainsIntro.
+  ///
+  /// In en, this message translates to:
+  /// **'I have two brains. The one on your device keeps things private; the cloud one is smarter for big jobs.'**
+  String get brainsIntro;
+
+  /// No description provided for @brainsLocalHeading.
+  ///
+  /// In en, this message translates to:
+  /// **'On-device brain'**
+  String get brainsLocalHeading;
+
+  /// No description provided for @brainsLocalDetail.
+  ///
+  /// In en, this message translates to:
+  /// **'Private. Runs on this device and works offline. Free, but uses storage and battery.'**
+  String get brainsLocalDetail;
+
+  /// No description provided for @brainsCloudHeading.
+  ///
+  /// In en, this message translates to:
+  /// **'Cloud brain'**
+  String get brainsCloudHeading;
+
+  /// No description provided for @brainsCloudDetail.
+  ///
+  /// In en, this message translates to:
+  /// **'Smarter for big jobs. Uses your own key; you pay the provider.'**
+  String get brainsCloudDetail;
+
+  /// No description provided for @brainsRoutingHeading.
+  ///
+  /// In en, this message translates to:
+  /// **'Who handles what'**
+  String get brainsRoutingHeading;
+
+  /// No description provided for @brainsRoutingDetail.
+  ///
+  /// In en, this message translates to:
+  /// **'Private data never goes to the cloud unless you say so here.'**
+  String get brainsRoutingDetail;
+
+  /// No description provided for @brainsYourDevice.
+  ///
+  /// In en, this message translates to:
+  /// **'This device has {ram} GB of memory.'**
+  String brainsYourDevice(String ram);
+
+  /// No description provided for @brainsNotSupported.
+  ///
+  /// In en, this message translates to:
+  /// **'On-device brains aren\'t available on this platform yet.'**
+  String get brainsNotSupported;
+
+  /// No description provided for @fitRecommended.
+  ///
+  /// In en, this message translates to:
+  /// **'Recommended'**
+  String get fitRecommended;
+
+  /// No description provided for @fitGood.
+  ///
+  /// In en, this message translates to:
+  /// **'Fits'**
+  String get fitGood;
+
+  /// No description provided for @fitHeavy.
+  ///
+  /// In en, this message translates to:
+  /// **'Heavy'**
+  String get fitHeavy;
+
+  /// No description provided for @fitTooBig.
+  ///
+  /// In en, this message translates to:
+  /// **'Too big'**
+  String get fitTooBig;
+
+  /// No description provided for @modelDownload.
+  ///
+  /// In en, this message translates to:
+  /// **'Download {size}'**
+  String modelDownload(String size);
+
+  /// No description provided for @modelUse.
+  ///
+  /// In en, this message translates to:
+  /// **'Use'**
+  String get modelUse;
+
+  /// No description provided for @modelInUse.
+  ///
+  /// In en, this message translates to:
+  /// **'In use'**
+  String get modelInUse;
+
+  /// No description provided for @modelRemove.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete download'**
+  String get modelRemove;
+
+  /// No description provided for @modelDownloading.
+  ///
+  /// In en, this message translates to:
+  /// **'Downloading {percent}%'**
+  String modelDownloading(int percent);
+
+  /// No description provided for @modelSize.
+  ///
+  /// In en, this message translates to:
+  /// **'Download'**
+  String get modelSize;
+
+  /// No description provided for @modelMemory.
+  ///
+  /// In en, this message translates to:
+  /// **'Needs'**
+  String get modelMemory;
+
+  /// No description provided for @modelMemoryValue.
+  ///
+  /// In en, this message translates to:
+  /// **'{gb} GB memory'**
+  String modelMemoryValue(int gb);
+
+  /// No description provided for @modelSmarts.
+  ///
+  /// In en, this message translates to:
+  /// **'Smarts'**
+  String get modelSmarts;
+
+  /// No description provided for @modelSpeed.
+  ///
+  /// In en, this message translates to:
+  /// **'Speed'**
+  String get modelSpeed;
+
+  /// No description provided for @modelGoodAt.
+  ///
+  /// In en, this message translates to:
+  /// **'Good at'**
+  String get modelGoodAt;
+
+  /// No description provided for @modelCost.
+  ///
+  /// In en, this message translates to:
+  /// **'Cost'**
+  String get modelCost;
+
+  /// No description provided for @modelFree.
+  ///
+  /// In en, this message translates to:
+  /// **'Free forever'**
+  String get modelFree;
+
+  /// No description provided for @modelLicense.
+  ///
+  /// In en, this message translates to:
+  /// **'Licence'**
+  String get modelLicense;
+
+  /// No description provided for @cloudNoKey.
+  ///
+  /// In en, this message translates to:
+  /// **'No cloud brain yet. Add a key to unlock planning, briefings and harder questions.'**
+  String get cloudNoKey;
+
+  /// No description provided for @cloudAddKey.
+  ///
+  /// In en, this message translates to:
+  /// **'Add a key'**
+  String get cloudAddKey;
+
+  /// No description provided for @cloudChange.
+  ///
+  /// In en, this message translates to:
+  /// **'Change key or model'**
+  String get cloudChange;
+
+  /// No description provided for @cloudPrice.
+  ///
+  /// In en, this message translates to:
+  /// **'\${input} in, \${output} out per million tokens'**
+  String cloudPrice(String input, String output);
+
+  /// No description provided for @cloudFreeTier.
+  ///
+  /// In en, this message translates to:
+  /// **'Free tier'**
+  String get cloudFreeTier;
+
+  /// No description provided for @cloudPerRequest.
+  ///
+  /// In en, this message translates to:
+  /// **'About {cost} per request'**
+  String cloudPerRequest(String cost);
+
+  /// No description provided for @cloudMonthly.
+  ///
+  /// In en, this message translates to:
+  /// **'This month so far: {count} cloud requests, about {cost}'**
+  String cloudMonthly(int count, String cost);
+
+  /// No description provided for @cloudUnknownModel.
+  ///
+  /// In en, this message translates to:
+  /// **'I don\'t know this model\'s prices. Check your provider\'s pricing page.'**
+  String get cloudUnknownModel;
+
+  /// No description provided for @jobPrivate.
+  ///
+  /// In en, this message translates to:
+  /// **'Notifications and memories'**
+  String get jobPrivate;
+
+  /// No description provided for @jobCommands.
+  ///
+  /// In en, this message translates to:
+  /// **'Everyday commands'**
+  String get jobCommands;
+
+  /// No description provided for @jobBriefing.
+  ///
+  /// In en, this message translates to:
+  /// **'Daily briefing'**
+  String get jobBriefing;
+
+  /// No description provided for @jobBigJobs.
+  ///
+  /// In en, this message translates to:
+  /// **'Planning, drafts, long answers'**
+  String get jobBigJobs;
+
+  /// No description provided for @brainLocal.
+  ///
+  /// In en, this message translates to:
+  /// **'On-device'**
+  String get brainLocal;
+
+  /// No description provided for @brainCloud.
+  ///
+  /// In en, this message translates to:
+  /// **'Cloud'**
+  String get brainCloud;
+
+  /// No description provided for @presetLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Presets'**
+  String get presetLabel;
+
+  /// No description provided for @presetPrivate.
+  ///
+  /// In en, this message translates to:
+  /// **'Private'**
+  String get presetPrivate;
+
+  /// No description provided for @presetBalanced.
+  ///
+  /// In en, this message translates to:
+  /// **'Balanced'**
+  String get presetBalanced;
+
+  /// No description provided for @presetMaxSmarts.
+  ///
+  /// In en, this message translates to:
+  /// **'Max smarts'**
+  String get presetMaxSmarts;
+
+  /// No description provided for @fallbackLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'If that brain can\'t run'**
+  String get fallbackLabel;
+
+  /// No description provided for @fallbackAsk.
+  ///
+  /// In en, this message translates to:
+  /// **'Tell me'**
+  String get fallbackAsk;
+
+  /// No description provided for @fallbackUseOther.
+  ///
+  /// In en, this message translates to:
+  /// **'Use the other one'**
+  String get fallbackUseOther;
+
+  /// No description provided for @fallbackFail.
+  ///
+  /// In en, this message translates to:
+  /// **'Don\'t run it'**
+  String get fallbackFail;
+
+  /// No description provided for @fallbackNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Private data still won\'t go to the cloud on its own.'**
+  String get fallbackNote;
 }
 
 class _AppLocalizationsDelegate

@@ -15,6 +15,7 @@ import 'core/domain/memory_repository.dart';
 import 'core/domain/pip_emotion_state.dart';
 import 'core/services/embedding_backfill_service.dart';
 import 'core/services/llm_registry_service.dart';
+import 'features/brains/data/pip_brains.dart';
 import 'core/services/nightly_reflection_service.dart';
 import 'core/services/pip_audio_coordinator.dart';
 import 'core/services/pip_overlay_bridge.dart';
@@ -50,6 +51,7 @@ void main() async {
   await PipDesktopWindowManager.initialize();
   await PipSfxService.loadSetting();
   await PresenceSettings.instance.load();
+  unawaited(PipBrains.instance.load());
   PipSfxService.preload();
   await PipNotificationService.init();
   await OnboardingGate.instance.load();

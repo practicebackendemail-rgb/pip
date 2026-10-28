@@ -90,7 +90,8 @@ class _EntryRow extends StatelessWidget {
     final t = context.tokens;
     final l10n = context.l10n;
     final time = MaterialLocalizations.of(context).formatTimeOfDay(TimeOfDay.fromDateTime(entry.at));
-    final detail = [time, if (entry.detail != null) entry.detail!].join(' · ');
+    final where = switch (entry.ranOn) { 'local' => l10n.ranOnDevice, 'cloud' => l10n.ranInCloud, _ => null };
+    final detail = [time, ?where, if (entry.detail != null) entry.detail!].join(' · ');
     return Padding(
       padding: EdgeInsets.only(bottom: t.space.xs),
       child: Material(
