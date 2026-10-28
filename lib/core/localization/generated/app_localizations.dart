@@ -1005,6 +1005,156 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Private data still won\'t go to the cloud on its own.'**
   String get fallbackNote;
+
+  /// No description provided for @briefingTasksDue.
+  ///
+  /// In en, this message translates to:
+  /// **'Tasks due'**
+  String get briefingTasksDue;
+
+  /// No description provided for @briefingOverdueCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} overdue'**
+  String briefingOverdueCount(int count);
+
+  /// No description provided for @briefingRecentEmail.
+  ///
+  /// In en, this message translates to:
+  /// **'Recent email'**
+  String get briefingRecentEmail;
+
+  /// No description provided for @briefingImportantCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} important'**
+  String briefingImportantCount(int count);
+
+  /// No description provided for @briefingNeedsYou.
+  ///
+  /// In en, this message translates to:
+  /// **'Needs you now'**
+  String get briefingNeedsYou;
+
+  /// No description provided for @briefingOverdueSince.
+  ///
+  /// In en, this message translates to:
+  /// **'Overdue since {date}'**
+  String briefingOverdueSince(String date);
+
+  /// No description provided for @briefingSnooze.
+  ///
+  /// In en, this message translates to:
+  /// **'Snooze'**
+  String get briefingSnooze;
+
+  /// No description provided for @briefingSnoozed.
+  ///
+  /// In en, this message translates to:
+  /// **'Moved to tomorrow'**
+  String get briefingSnoozed;
+
+  /// No description provided for @briefingToday.
+  ///
+  /// In en, this message translates to:
+  /// **'Today'**
+  String get briefingToday;
+
+  /// No description provided for @briefingNothingToday.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing scheduled today.'**
+  String get briefingNothingToday;
+
+  /// No description provided for @briefingTasks.
+  ///
+  /// In en, this message translates to:
+  /// **'Tasks'**
+  String get briefingTasks;
+
+  /// No description provided for @briefingNoTasks.
+  ///
+  /// In en, this message translates to:
+  /// **'No open tasks.'**
+  String get briefingNoTasks;
+
+  /// No description provided for @briefingDueToday.
+  ///
+  /// In en, this message translates to:
+  /// **'today'**
+  String get briefingDueToday;
+
+  /// No description provided for @briefingInbox.
+  ///
+  /// In en, this message translates to:
+  /// **'Inbox'**
+  String get briefingInbox;
+
+  /// No description provided for @briefingCheckingEmail.
+  ///
+  /// In en, this message translates to:
+  /// **'Checking email…'**
+  String get briefingCheckingEmail;
+
+  /// No description provided for @briefingNoEmail.
+  ///
+  /// In en, this message translates to:
+  /// **'No recent email.'**
+  String get briefingNoEmail;
+
+  /// No description provided for @briefingReply.
+  ///
+  /// In en, this message translates to:
+  /// **'Reply'**
+  String get briefingReply;
+
+  /// No description provided for @briefingReplyQuery.
+  ///
+  /// In en, this message translates to:
+  /// **'Draft a reply to {from} about \"{subject}\".'**
+  String briefingReplyQuery(String from, String subject);
+
+  /// No description provided for @briefingReplyQueryNoSender.
+  ///
+  /// In en, this message translates to:
+  /// **'Draft a reply to the email \"{subject}\".'**
+  String briefingReplyQueryNoSender(String subject);
+
+  /// No description provided for @briefingSummaryLoading.
+  ///
+  /// In en, this message translates to:
+  /// **'Pip is reading your day…'**
+  String get briefingSummaryLoading;
+
+  /// No description provided for @briefingMinutes.
+  ///
+  /// In en, this message translates to:
+  /// **'{minutes} min'**
+  String briefingMinutes(int minutes);
+
+  /// No description provided for @briefingMore.
+  ///
+  /// In en, this message translates to:
+  /// **'+{count} more'**
+  String briefingMore(int count);
+
+  /// No description provided for @briefingDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Done'**
+  String get briefingDone;
+
+  /// No description provided for @chipPlanMyDay.
+  ///
+  /// In en, this message translates to:
+  /// **'Plan my day'**
+  String get chipPlanMyDay;
+
+  /// No description provided for @queryPlanMyDay.
+  ///
+  /// In en, this message translates to:
+  /// **'Plan my day around my tasks and schedule.'**
+  String get queryPlanMyDay;
 }
 
 class _AppLocalizationsDelegate

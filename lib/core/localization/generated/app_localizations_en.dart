@@ -515,4 +515,93 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get fallbackNote =>
       'Private data still won\'t go to the cloud on its own.';
+
+  @override
+  String get briefingTasksDue => 'Tasks due';
+
+  @override
+  String briefingOverdueCount(int count) {
+    return '$count overdue';
+  }
+
+  @override
+  String get briefingRecentEmail => 'Recent email';
+
+  @override
+  String briefingImportantCount(int count) {
+    return '$count important';
+  }
+
+  @override
+  String get briefingNeedsYou => 'Needs you now';
+
+  @override
+  String briefingOverdueSince(String date) {
+    return 'Overdue since $date';
+  }
+
+  @override
+  String get briefingSnooze => 'Snooze';
+
+  @override
+  String get briefingSnoozed => 'Moved to tomorrow';
+
+  @override
+  String get briefingToday => 'Today';
+
+  @override
+  String get briefingNothingToday => 'Nothing scheduled today.';
+
+  @override
+  String get briefingTasks => 'Tasks';
+
+  @override
+  String get briefingNoTasks => 'No open tasks.';
+
+  @override
+  String get briefingDueToday => 'today';
+
+  @override
+  String get briefingInbox => 'Inbox';
+
+  @override
+  String get briefingCheckingEmail => 'Checking email…';
+
+  @override
+  String get briefingNoEmail => 'No recent email.';
+
+  @override
+  String get briefingReply => 'Reply';
+
+  @override
+  String briefingReplyQuery(String from, String subject) {
+    return 'Draft a reply to $from about \"$subject\".';
+  }
+
+  @override
+  String briefingReplyQueryNoSender(String subject) {
+    return 'Draft a reply to the email \"$subject\".';
+  }
+
+  @override
+  String get briefingSummaryLoading => 'Pip is reading your day…';
+
+  @override
+  String briefingMinutes(int minutes) {
+    return '$minutes min';
+  }
+
+  @override
+  String briefingMore(int count) {
+    return '+$count more';
+  }
+
+  @override
+  String get briefingDone => 'Done';
+
+  @override
+  String get chipPlanMyDay => 'Plan my day';
+
+  @override
+  String get queryPlanMyDay => 'Plan my day around my tasks and schedule.';
 }

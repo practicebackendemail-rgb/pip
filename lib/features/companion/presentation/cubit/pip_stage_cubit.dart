@@ -275,7 +275,7 @@ class PipStageCubit extends Cubit<PipStageState> {
       final provider = PipBrains.instance.providerFor(BrainJob.briefing, llmRegistry);
       final keepPrivate = PipBrains.instance.cloudMustNotSeePrivate;
       final text = await PipBriefing.compose(provider,
-          tasks: tasks.map((t) => t.title).toList(), emails: emails,
+          tasks: tasks.map(PipBriefing.taskLine).toList(), emails: emails,
           notifications: await NotificationInbox.instance.briefingLines(countsOnly: keepPrivate));
       ActivityRecorder.entry(PipBriefing.activity(tasks: tasks.length, emails: emails.length));
       emit(state.copyWith(briefingContent: text, isLoading: false, statusText: "Briefing ready", currentMood: PipMood.happy));
