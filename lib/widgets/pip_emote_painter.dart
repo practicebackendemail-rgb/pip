@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import 'pip/pip_pose.dart';
 import 'pip_params.dart';
 
 enum PipEmote { none, question, sparkle, sweat, sleep, sound }
@@ -29,9 +30,12 @@ PipEmote emoteFor(PipMood mood) {
 /// [PipVectorPainter]. Each mark floats up and fades on a loop driven by [time].
 class PipEmotePainter extends CustomPainter {
   final PipEmote emote;
-  final double time;
+  final PipPose pose;
 
-  const PipEmotePainter({required this.emote, required this.time});
+  /// Repaints from the pose controller's clock instead of widget rebuilds.
+  PipEmotePainter({required this.emote, required this.pose, super.repaint});
+
+  double get time => pose.time;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -112,5 +116,5 @@ class PipEmotePainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant PipEmotePainter old) => old.emote != emote || (emote != PipEmote.none && old.time != time);
+  bool shouldRepaint(covariant PipEmotePainter old) => old.emote != emote || !identical(old.pose, pose);
 }
