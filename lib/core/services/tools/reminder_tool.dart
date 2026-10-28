@@ -13,7 +13,11 @@ class ReminderTool extends PipTool {
               'Add "repeat" for a recurring reminder.',
           confirmationLevel: ToolConfirmationLevel.level2ReportAfter,
           parameters: const [
-            ToolParameterSpec(name: 'title', type: 'string', description: 'What to remind about.', isRequired: true),
+            ToolParameterSpec(
+                name: 'title',
+                type: 'string',
+                description: 'What to remind about. Leave out if the user did not say ("remind me in 20 min").',
+                isRequired: false),
             ToolParameterSpec(
                 name: 'time', type: 'string', description: 'Clock time today/tomorrow, e.g. "16:00" or "7am".', isRequired: false),
             ToolParameterSpec(
@@ -36,14 +40,14 @@ class ReminderTool extends PipTool {
 
   @override
   Future<Map<String, dynamic>> execute(Map<String, dynamic> args) async {
-    final title = (args['title'] as String?)?.trim();
+    final given = (args['title'] as String?)?.trim();
+    final title = given == null || given.isEmpty ? 'Reminder' : given;
     final days = parseDays(args['repeat'] as String?);
     final at = resolveWhen(
       atIso: args['at_iso'] as String?,
       time: args['time'] as String?,
       delaySeconds: (args['delay_seconds'] as num?)?.toInt(),
     );
-    if (title == null || title.isEmpty) return {'error': 'What should I remind you about?'};
     if (at == null) return {'error': 'I need a time, like "7:30 pm" or "in 10 minutes".'};
     if (days.isEmpty && !at.isAfter(DateTime.now())) return {'error': 'That time has already passed.'};
 

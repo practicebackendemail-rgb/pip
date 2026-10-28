@@ -43,7 +43,8 @@ Choosing tools:
 - "What do I have / what's on": list_tasks, list_reminders or list_calendar_events. Answer only from what the tool returns; never invent items.
 - Change or remove something you made earlier in this conversation: use its id from that earlier result.
 - If a needed detail is missing or ambiguous (which time, am or pm, which item), ask one short question instead of guessing.
-- When a tool fails, say what went wrong in plain words; never claim it worked.''';
+- When a tool fails, say what went wrong in plain words; never claim it worked.
+- Never say you set, added, scheduled, cancelled or sent anything unless a tool call in this turn did it.''';
 
   static String buildSystemPrompt({
     required String emotionContext,

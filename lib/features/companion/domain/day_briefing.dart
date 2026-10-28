@@ -35,11 +35,20 @@ class BriefEmail extends Equatable {
 
   const BriefEmail({required this.from, required this.subject});
 
-  /// Parses EmailService's "From: x | Subject: y" lines.
+  /// Parses EmailService's "From: x | Subject: y" lines. A leading tag like
+  /// "[owner/repo]" is dropped, so similar subjects stay distinguishable.
   static BriefEmail parse(String line) {
     final m = RegExp(r'From:\s*(.*?)\s*\|\s*Subject:\s*(.*)').firstMatch(line);
-    return m == null ? BriefEmail(from: '', subject: line.trim()) : BriefEmail(from: m.group(1)!, subject: m.group(2)!);
+    String clean(String s) {
+      final stripped = s.replaceFirst(RegExp(r'^\s*\[[^\]]{1,80}\]\s*'), '').trim();
+      return stripped.isEmpty ? s.trim() : stripped;
+    }
+
+    return m == null ? BriefEmail(from: '', subject: clean(line)) : BriefEmail(from: m.group(1)!, subject: clean(m.group(2)!));
   }
+
+  /// Automated senders (no-reply, notifications, mailer-daemon): no Reply.
+  bool get canReply => !RegExp(r'no-?reply|notifications?@|mailer-daemon|donotreply|bounce', caseSensitive: false).hasMatch(from);
 
   @override
   List<Object?> get props => [from, subject];

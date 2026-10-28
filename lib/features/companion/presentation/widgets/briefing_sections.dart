@@ -219,7 +219,7 @@ class BriefingInbox extends StatelessWidget {
                     ],
                   ),
                 ),
-                TextButton(onPressed: () => onReply(e), child: Text(l10n.briefingReply)),
+                if (e.canReply) TextButton(onPressed: () => onReply(e), child: Text(l10n.briefingReply)),
               ],
             ),
           ),

@@ -1,4 +1,5 @@
 import '../../../../core/domain/llm_provider.dart';
+import '../../domain/action_intent.dart';
 import '../../domain/pip_structured_reply.dart';
 import 'pip_conversation_history.dart';
 import 'pip_tool_coordinator.dart';
@@ -18,6 +19,11 @@ class PipChatEngine {
   static const int maxToolRounds = 5;
   static const Duration callTimeout = Duration(seconds: 45);
 
+  /// Sent when the model answered an action request without using a tool.
+  static const String actionNudge = 'You did not call any tool, so nothing has been done yet. '
+      'Call the matching tool now. If a detail you need is missing, ask one short question instead. '
+      'Never say it is done unless a tool did it.';
+
   final PipToolCoordinator toolCoordinator;
   final PipConversationHistory history;
 
@@ -36,6 +42,8 @@ class PipChatEngine {
       LlmMessage(role: 'user', content: userText),
     ];
 
+    var toolRan = false;
+    var nudged = false;
     for (var round = 0; round < maxToolRounds; round++) {
       final response = await provider
           .chat(
@@ -54,8 +62,20 @@ class PipChatEngine {
       // No tool needed: that's the answer. A plain-text reply (the schema
       // isn't enforced while tools are on) is used as is: a second "make it
       // JSON" call only to recover the emotion doubled the wait.
-      if (calls.isEmpty) return _finish(userText, parsed);
+      if (calls.isEmpty) {
+        // A request to *do* something answered without any tool would be a
+        // false "done" (e.g. a reminder that never fires). Push back once.
+        if (!toolRan && !nudged && ActionIntent.isCommand(userText) && !ActionIntent.isQuestion(parsed.text)) {
+          nudged = true;
+          messages
+            ..add(LlmMessage(role: 'assistant', content: response.text))
+            ..add(LlmMessage(role: 'user', content: actionNudge));
+          continue;
+        }
+        return _finish(userText, parsed);
+      }
 
+      toolRan = true;
       final exec = await toolCoordinator.executeCalls(calls, messages);
       if (exec.requiresConfirmation) return PipChatOutcome.confirmation(exec);
     }
