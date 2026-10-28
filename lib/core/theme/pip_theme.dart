@@ -1,3 +1,7 @@
+// Older Flutter re-exports this from material.dart; 3.47.8 doesn't. Keep the
+// explicit import so the theme builds on both.
+// ignore: unnecessary_import
+import 'package:flutter/cupertino.dart' show CupertinoPageTransitionsBuilder;
 import 'package:flutter/material.dart';
 import 'pip_tokens.dart';
 
