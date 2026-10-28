@@ -328,4 +328,10 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get presenceQuietDetail =>
       'No sounds and no spoken voice. Pip still works and shows its words.';
+
+  @override
+  String get chipWhatDidIMiss => 'What did I miss?';
+
+  @override
+  String get queryWhatDidIMiss => 'What did I miss? Check my notifications.';
 }

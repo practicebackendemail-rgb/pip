@@ -15,6 +15,7 @@ import '../services/tools/alarm_tools.dart';
 import '../services/tools/calendar_tools.dart';
 import '../services/tools/email_tools.dart';
 import '../services/tools/info_tools.dart';
+import '../services/tools/notification_tools.dart';
 import '../services/tools/notes_tools.dart';
 import '../services/tools/pip_internal_tools.dart';
 import '../services/tools/reminder_tool.dart';
@@ -72,6 +73,7 @@ abstract class CoreModule {
     registry.registerTool(SetAlarmTool());
     registry.registerTool(const ListRemindersTool());
     registry.registerTool(CancelReminderTool());
+    registry.registerTool(MissedNotificationsTool());
     registry.registerTool(ReadEmailsTool(emailService: emailService));
     registry.registerTool(DraftEmailTool());
     registry.registerTool(SendEmailTool(emailService: emailService));

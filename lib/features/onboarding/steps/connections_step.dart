@@ -10,6 +10,7 @@ import '../../../core/services/pip_overlay_manager.dart';
 import '../../../core/services/tools/calendar_tools.dart';
 import '../../../core/services/tools/reminder_tool.dart';
 import '../../../core/theme/pip_theme.dart';
+import '../../notifications/data/notification_inbox.dart';
 import '../../../widgets/pip_params.dart';
 import '../email_setup_sheet.dart';
 import '../onboarding_flow.dart';
@@ -37,11 +38,23 @@ class _ConnectionsPipStepState extends State<ConnectionsStep> {
   ConnectionStatus _remindersStatus = ConnectionStatus.off;
   ConnectionStatus _voiceStatus = ConnectionStatus.off;
   ConnectionStatus _floatingStatus = ConnectionStatus.off;
+  ConnectionStatus _notificationsStatus = ConnectionStatus.off;
+
+  /// Notification access is granted in Android settings, outside the app:
+  /// re-check when the user comes back.
+  late final AppLifecycleListener _lifecycle = AppLifecycleListener(onResume: _refresh);
 
   @override
   void initState() {
     super.initState();
+    _lifecycle;
     _refresh();
+  }
+
+  @override
+  void dispose() {
+    _lifecycle.dispose();
+    super.dispose();
   }
 
   Future<void> _refresh() async {
@@ -55,6 +68,9 @@ class _ConnectionsPipStepState extends State<ConnectionsStep> {
     if (_android && await PipOverlayManager.isPermissionGranted()) _floatingStatus = ConnectionStatus.on;
     if (_windows && await PipDesktopWindowManager.isLaunchAtStartupEnabled()) _floatingStatus = ConnectionStatus.on;
     if (getIt<PipAudioCoordinator>().isInitialized) _voiceStatus = ConnectionStatus.on;
+    _notificationsStatus = !NotificationInbox.supported
+        ? ConnectionStatus.unavailable
+        : (await NotificationInbox.instance.isEnabled() ? ConnectionStatus.on : ConnectionStatus.off);
     if (mounted) setState(() {});
   }
 
@@ -151,6 +167,14 @@ class _ConnectionsPipStepState extends State<ConnectionsStep> {
           status: _floatingStatus,
           action: _windows && _floatingStatus == ConnectionStatus.on ? 'Turn off' : 'Set up',
           onTap: _connectFloating,
+        ),
+        ConnectionRow(
+          icon: Icons.notifications_active_outlined,
+          title: 'Notifications',
+          detail: _android ? 'Lets Pip tell you what you missed' : 'Android only for now',
+          status: _notificationsStatus,
+          action: _notificationsStatus == ConnectionStatus.on ? 'Change' : 'Allow',
+          onTap: NotificationInbox.instance.openSettings,
         ),
       ],
     );

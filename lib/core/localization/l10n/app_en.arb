@@ -130,5 +130,7 @@
   "presenceBriefing": "Briefing",
   "presenceBriefingDetail": "Quiet through the day; ask \"what did I miss?\" when you're ready.",
   "presenceQuiet": "Quiet",
-  "presenceQuietDetail": "No sounds and no spoken voice. Pip still works and shows its words."
+  "presenceQuietDetail": "No sounds and no spoken voice. Pip still works and shows its words.",
+  "chipWhatDidIMiss": "What did I miss?",
+  "queryWhatDidIMiss": "What did I miss? Check my notifications."
 }

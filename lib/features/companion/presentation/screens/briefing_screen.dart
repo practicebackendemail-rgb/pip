@@ -57,6 +57,7 @@ class _BriefingScreenState extends State<BriefingScreen> {
             suggestions: [
               PipSuggestion(l10n.chipReadIt, l10n.queryReadIt),
               PipSuggestion(l10n.chipWhatsUrgent, l10n.queryWhatsUrgent),
+              PipSuggestion(l10n.chipWhatDidIMiss, l10n.queryWhatDidIMiss),
             ],
           ),
           Expanded(

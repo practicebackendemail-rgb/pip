@@ -22,6 +22,7 @@ import '../../../../widgets/pip_params.dart';
 import '../../../activity/presentation/activity_cubit.dart';
 import '../../domain/pip_action_speech.dart';
 import '../../domain/pip_briefing.dart';
+import '../../../notifications/data/notification_inbox.dart';
 import '../../domain/pip_character_bible.dart';
 import '../../domain/pip_structured_reply.dart';
 import 'pip_chat_engine.dart';
@@ -276,7 +277,8 @@ class PipStageCubit extends Cubit<PipStageState> {
 
     try {
       final text = await PipBriefing.compose(llmRegistry.getActiveProvider(),
-          tasks: tasks.map((t) => t.title).toList(), emails: emails);
+          tasks: tasks.map((t) => t.title).toList(), emails: emails,
+          notifications: await NotificationInbox.instance.briefingLines());
       ActivityRecorder.entry(PipBriefing.activity(tasks: tasks.length, emails: emails.length));
       emit(state.copyWith(briefingContent: text, isLoading: false, statusText: "Briefing ready", currentMood: PipMood.happy));
       speak("Here's your day. Ask me about anything in it.", isHappy: true);

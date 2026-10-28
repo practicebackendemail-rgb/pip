@@ -1,6 +1,9 @@
 package com.personal.assistant.personal_assistant
 
+import android.content.Intent
 import android.media.AudioManager
+import android.provider.Settings
+import androidx.core.app.NotificationManagerCompat
 import android.media.ToneGenerator
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
@@ -9,6 +12,7 @@ import kotlin.concurrent.thread
 
 class MainActivity : FlutterActivity() {
     private val CHANNEL = "com.pip.companion/sfx"
+    private val NOTIFICATIONS_CHANNEL = "com.pip.companion/notifications"
     private var toneGenerator: ToneGenerator? = null
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
@@ -19,6 +23,20 @@ class MainActivity : FlutterActivity() {
             toneGenerator = ToneGenerator(AudioManager.STREAM_MUSIC, 100)
         } catch (e: Exception) {
             e.printStackTrace()
+        }
+
+        // Notification access for "what did I miss?" (PipNotificationListener).
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, NOTIFICATIONS_CHANNEL).setMethodCallHandler { call, result ->
+            when (call.method) {
+                "isEnabled" -> result.success(
+                    NotificationManagerCompat.getEnabledListenerPackages(this).contains(packageName)
+                )
+                "openSettings" -> {
+                    startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                    result.success(true)
+                }
+                else -> result.notImplemented()
+            }
         }
 
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL).setMethodCallHandler { call, result ->

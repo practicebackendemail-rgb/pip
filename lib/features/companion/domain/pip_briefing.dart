@@ -6,17 +6,28 @@ import '../../activity/domain/activity_entry.dart';
 abstract final class PipBriefing {
   static const Duration timeout = Duration(seconds: 45);
 
-  static String prompt({required List<String> tasks, required List<String> emails, DateTime? now}) {
+  static String prompt({
+    required List<String> tasks,
+    required List<String> emails,
+    List<String> notifications = const [],
+    DateTime? now,
+  }) {
     final t = now ?? DateTime.now();
     return 'Write a short daily briefing for ${t.year}-${t.month}-${t.day}, in plain markdown bullets. '
         'Lead with anything urgent, then the plan. Be concrete and brief.\n'
         'Open tasks: ${tasks.isEmpty ? 'none' : tasks.join('; ')}\n'
-        'Recent emails: ${emails.isEmpty ? 'none' : emails.join('; ')}';
+        'Recent emails: ${emails.isEmpty ? 'none' : emails.join('; ')}\n'
+        'Important notifications: ${notifications.isEmpty ? 'none' : notifications.join('; ')}';
   }
 
-  static Future<String> compose(LlmProvider provider, {required List<String> tasks, required List<String> emails}) async {
+  static Future<String> compose(
+    LlmProvider provider, {
+    required List<String> tasks,
+    required List<String> emails,
+    List<String> notifications = const [],
+  }) async {
     final response = await provider
-        .chat([LlmMessage(role: 'user', content: prompt(tasks: tasks, emails: emails))])
+        .chat([LlmMessage(role: 'user', content: prompt(tasks: tasks, emails: emails, notifications: notifications))])
         .timeout(timeout);
     return response.text;
   }

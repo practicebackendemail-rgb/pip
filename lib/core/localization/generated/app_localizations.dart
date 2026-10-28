@@ -675,6 +675,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'No sounds and no spoken voice. Pip still works and shows its words.'**
   String get presenceQuietDetail;
+
+  /// No description provided for @chipWhatDidIMiss.
+  ///
+  /// In en, this message translates to:
+  /// **'What did I miss?'**
+  String get chipWhatDidIMiss;
+
+  /// No description provided for @queryWhatDidIMiss.
+  ///
+  /// In en, this message translates to:
+  /// **'What did I miss? Check my notifications.'**
+  String get queryWhatDidIMiss;
 }
 
 class _AppLocalizationsDelegate
