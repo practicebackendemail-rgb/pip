@@ -39,3 +39,12 @@ Comprehensive registry of all third-party dependencies, versions, and architectu
 ## 6. UI & Micro-interactions
 - `flutter_animate: ^4.5.2` — Declarative motion matching Kowalski restraint tokens.
 - `flutter_markdown: ^0.7.7+1` — Structured typography and code block rendering.
+
+## 7. Foundations, routing and localization
+- `go_router: ^17.5.0` — Declarative routes (`lib/core/routes/`), setup guard via `OnboardingGate`.
+- `flutter_localizations` (SDK) + `intl` — `context.l10n`; strings in `lib/core/localization/l10n/app_en.arb`.
+
+## 8. Voice
+- `record: ^6.2.1` — 16 kHz PCM capture for Accurate (Gemini audio) listening; feeds the voice-activity detector.
+- `speech_to_text: ^7.4.0` — Fast (on-device) recognition, wake word and open-mic listening.
+- `android_intent_plus: ^6.1.0` — Real alarms in the Android Clock app.

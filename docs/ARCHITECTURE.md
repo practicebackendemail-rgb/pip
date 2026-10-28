@@ -129,3 +129,17 @@ context.pop();
 ```
 
 The global `redirect` sends users to Welcome until `OnboardingGate` says setup is done, and keeps them out of Welcome/Onboarding afterwards (`/settings/setup` re-runs setup). Bottom sheets and dialogs are not routes.
+
+## 7. How-To: Voice (Fast, Accurate, hands-free)
+
+`lib/features/voice/` holds the listening stack; `PipAudioCoordinator` decides which path runs.
+
+- **Fast** (`SpeechEngine.onDevice`): `speech_to_text`, live partial words.
+- **Accurate** (`SpeechEngine.geminiAudio`): `UtteranceRecorder` captures PCM, `VoiceActivityDetector` ends the clip after ~0.9 s of quiet (with 300 ms pre-roll), `GeminiAudioTranscriber` sends it as inline `audio/wav` to the user's chosen Gemini model.
+- **Conversation mode**: `VoiceWiring` bridges `VoiceService` (TTS) status to `onPlaybackStarted/Finished`; after Pip speaks the mic reopens with `followUp: true` (shorter timeouts).
+- **Open mic / wake word**: `VoiceSettings.openMic` accepts any sentence (Fast) or uses the always-on VAD loop (Accurate); `wakeWord` keeps "Hey Pip" via `WakeWord.matches`.
+
+```dart
+await VoiceSettings.instance.update(engine: SpeechEngine.geminiAudio, conversationMode: true);
+audio.startActiveListening(onQuery: cubit.handleQuery);
+```

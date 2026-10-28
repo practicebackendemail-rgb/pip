@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import '../../core/localization/l10n_extension.dart';
 import '../../core/routes/app_routes.dart';
 import '../../core/di/injection.dart';
 import '../../core/services/email_service.dart';
@@ -48,6 +49,12 @@ class PipSettingsScreen extends StatelessWidget {
                   title: 'AI model',
                   value: _providerLabel(llm.activeProviderId),
                   onTap: () => context.push(AppRoutes.settingsAiModel),
+                ),
+                _Row(
+                  icon: Icons.record_voice_over_outlined,
+                  title: context.l10n.voiceSettingsTitle,
+                  value: context.l10n.voiceSettingsSubtitle,
+                  onTap: () => context.push(AppRoutes.settingsVoice),
                 ),
                 const _Section('Connections'),
                 _Row(

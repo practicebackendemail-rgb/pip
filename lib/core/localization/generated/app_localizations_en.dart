@@ -98,4 +98,66 @@ class AppLocalizationsEn extends AppLocalizations {
     );
     return '$_temp0';
   }
+
+  @override
+  String get voiceSettingsTitle => 'Voice';
+
+  @override
+  String get voiceSettingsSubtitle => 'How Pip hears you';
+
+  @override
+  String get voiceEngineHeading => 'Recognition';
+
+  @override
+  String get voiceEngineFast => 'Fast';
+
+  @override
+  String get voiceEngineFastDetail =>
+      'On your phone. Instant, free, works offline.';
+
+  @override
+  String get voiceEngineAccurate => 'Accurate';
+
+  @override
+  String get voiceEngineAccurateDetail =>
+      'Gemini listens to the recording. Better with accents and noise; uses your key\'s quota.';
+
+  @override
+  String get voiceHandsFreeHeading => 'Hands-free';
+
+  @override
+  String get voiceConversationMode => 'Conversation mode';
+
+  @override
+  String get voiceConversationModeDetail =>
+      'After Pip answers, keep listening for your reply.';
+
+  @override
+  String get voiceOpenMic => 'Talk without a wake word';
+
+  @override
+  String get voiceOpenMicDetail =>
+      'While Pip is open, anything you say is for Pip.';
+
+  @override
+  String get voiceWakeWord => '\"Hey Pip\" wake word';
+
+  @override
+  String get voiceWakeWordDetail => 'Listen in the background for Pip\'s name.';
+
+  @override
+  String get voicePrivacyNote =>
+      'Pip only listens while the app is open. Accurate mode sends the recording to Google with your key; nothing is stored.';
+
+  @override
+  String get voiceTryIt => 'Try it';
+
+  @override
+  String voiceHeard(String text) {
+    return 'Heard: \"$text\"';
+  }
+
+  @override
+  String get voiceHeardNothing =>
+      'I didn\'t catch anything. Try again a little louder.';
 }

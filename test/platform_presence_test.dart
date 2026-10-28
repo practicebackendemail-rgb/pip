@@ -83,7 +83,7 @@ class StubAudioCoordinator extends PipAudioCoordinator {
   bool activeListeningTriggered = false;
 
   @override
-  Future<void> startActiveListening({required Function(String query) onQuery}) async {
+  Future<void> startActiveListening({required Function(String query) onQuery, bool followUp = false}) async {
     activeListeningTriggered = true;
     onQuery('Hey Pip, calculate Pi');
   }

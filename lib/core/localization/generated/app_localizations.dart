@@ -249,6 +249,114 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{count, plural, =0{Nothing on your plate.} =1{1 open task} other{{count} open tasks}}'**
   String openTasksCount(int count);
+
+  /// No description provided for @voiceSettingsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Voice'**
+  String get voiceSettingsTitle;
+
+  /// No description provided for @voiceSettingsSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'How Pip hears you'**
+  String get voiceSettingsSubtitle;
+
+  /// No description provided for @voiceEngineHeading.
+  ///
+  /// In en, this message translates to:
+  /// **'Recognition'**
+  String get voiceEngineHeading;
+
+  /// No description provided for @voiceEngineFast.
+  ///
+  /// In en, this message translates to:
+  /// **'Fast'**
+  String get voiceEngineFast;
+
+  /// No description provided for @voiceEngineFastDetail.
+  ///
+  /// In en, this message translates to:
+  /// **'On your phone. Instant, free, works offline.'**
+  String get voiceEngineFastDetail;
+
+  /// No description provided for @voiceEngineAccurate.
+  ///
+  /// In en, this message translates to:
+  /// **'Accurate'**
+  String get voiceEngineAccurate;
+
+  /// No description provided for @voiceEngineAccurateDetail.
+  ///
+  /// In en, this message translates to:
+  /// **'Gemini listens to the recording. Better with accents and noise; uses your key\'s quota.'**
+  String get voiceEngineAccurateDetail;
+
+  /// No description provided for @voiceHandsFreeHeading.
+  ///
+  /// In en, this message translates to:
+  /// **'Hands-free'**
+  String get voiceHandsFreeHeading;
+
+  /// No description provided for @voiceConversationMode.
+  ///
+  /// In en, this message translates to:
+  /// **'Conversation mode'**
+  String get voiceConversationMode;
+
+  /// No description provided for @voiceConversationModeDetail.
+  ///
+  /// In en, this message translates to:
+  /// **'After Pip answers, keep listening for your reply.'**
+  String get voiceConversationModeDetail;
+
+  /// No description provided for @voiceOpenMic.
+  ///
+  /// In en, this message translates to:
+  /// **'Talk without a wake word'**
+  String get voiceOpenMic;
+
+  /// No description provided for @voiceOpenMicDetail.
+  ///
+  /// In en, this message translates to:
+  /// **'While Pip is open, anything you say is for Pip.'**
+  String get voiceOpenMicDetail;
+
+  /// No description provided for @voiceWakeWord.
+  ///
+  /// In en, this message translates to:
+  /// **'\"Hey Pip\" wake word'**
+  String get voiceWakeWord;
+
+  /// No description provided for @voiceWakeWordDetail.
+  ///
+  /// In en, this message translates to:
+  /// **'Listen in the background for Pip\'s name.'**
+  String get voiceWakeWordDetail;
+
+  /// No description provided for @voicePrivacyNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Pip only listens while the app is open. Accurate mode sends the recording to Google with your key; nothing is stored.'**
+  String get voicePrivacyNote;
+
+  /// No description provided for @voiceTryIt.
+  ///
+  /// In en, this message translates to:
+  /// **'Try it'**
+  String get voiceTryIt;
+
+  /// No description provided for @voiceHeard.
+  ///
+  /// In en, this message translates to:
+  /// **'Heard: \"{text}\"'**
+  String voiceHeard(String text);
+
+  /// No description provided for @voiceHeardNothing.
+  ///
+  /// In en, this message translates to:
+  /// **'I didn\'t catch anything. Try again a little louder.'**
+  String get voiceHeardNothing;
 }
 
 class _AppLocalizationsDelegate

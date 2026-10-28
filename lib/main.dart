@@ -25,6 +25,7 @@ import 'core/services/sync/pip_cloud_sync_coordinator.dart';
 import 'core/services/task_provider.dart';
 import 'core/theme/pip_theme.dart';
 import 'features/companion/presentation/cubit/pip_stage_cubit.dart';
+import 'features/voice/voice_wiring.dart';
 import 'widgets/companion/pip_overlay_widget.dart';
 
 // Overlay entry point required by flutter_overlay_window
@@ -72,6 +73,7 @@ class _PersonalAssistantAppState extends State<PersonalAssistantApp>
   String? _embeddingProviderId;
   Timer? _driftTimer;
   StreamSubscription<int>? _notificationTaps;
+  late final VoiceWiring _voice = VoiceWiring(audio: getIt(), voice: getIt(), llm: getIt());
 
   @override
   void initState() {
@@ -95,6 +97,7 @@ class _PersonalAssistantAppState extends State<PersonalAssistantApp>
       (_) => getIt<PipEmotionState>().evaluateTimeDrift(),
     );
     _logSession('session_started');
+    _voice.start();
     _notificationTaps = PipNotificationService.openedItems.listen((_) => _openAlarms());
     // Reflection, then embedding backfill, once the first frame is up
     WidgetsBinding.instance.addPostFrameCallback((_) async {
@@ -135,6 +138,7 @@ class _PersonalAssistantAppState extends State<PersonalAssistantApp>
     getIt<LlmRegistryService>().removeListener(_onRegistryChanged);
     _driftTimer?.cancel();
     _notificationTaps?.cancel();
+    _voice.dispose();
     _overlayBridge?.dispose();
     _stageCubit.close();
     super.dispose();

@@ -1,9 +1,9 @@
 {
   "@@locale": "en",
-
   "appTitle": "Pip",
-  "@appTitle": { "description": "App name shown in the window title and task switcher." },
-
+  "@appTitle": {
+    "description": "App name shown in the window title and task switcher."
+  },
   "actionContinue": "Continue",
   "actionBack": "Back",
   "actionSave": "Save",
@@ -13,27 +13,69 @@
   "actionDone": "Done",
   "actionRetry": "Try again",
   "saved": "Saved",
-
   "navPip": "Pip",
   "navTasks": "Tasks",
   "navAlarms": "Alarms",
   "navMemory": "Memory",
   "navSettings": "Settings",
-
   "greetingMorning": "Morning",
   "greetingAfternoon": "Afternoon",
   "greetingEvening": "Evening",
   "greetingLateNight": "Late night",
   "greetingStillUp": "Still up",
   "greetingWithName": "{part}, {name}!",
-  "@greetingWithName": { "placeholders": { "part": { "type": "String" }, "name": { "type": "String" } } },
+  "@greetingWithName": {
+    "placeholders": {
+      "part": {
+        "type": "String"
+      },
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "greetingNoName": "{part}!",
-  "@greetingNoName": { "placeholders": { "part": { "type": "String" } } },
-
+  "@greetingNoName": {
+    "placeholders": {
+      "part": {
+        "type": "String"
+      }
+    }
+  },
   "voiceListening": "Listening…",
   "voiceTapToTalk": "Tap to talk",
   "voiceSayYesOrNo": "Just say yes or no.",
-
   "openTasksCount": "{count, plural, =0{Nothing on your plate.} =1{1 open task} other{{count} open tasks}}",
-  "@openTasksCount": { "placeholders": { "count": { "type": "int" } } }
+  "@openTasksCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "voiceSettingsTitle": "Voice",
+  "voiceSettingsSubtitle": "How Pip hears you",
+  "voiceEngineHeading": "Recognition",
+  "voiceEngineFast": "Fast",
+  "voiceEngineFastDetail": "On your phone. Instant, free, works offline.",
+  "voiceEngineAccurate": "Accurate",
+  "voiceEngineAccurateDetail": "Gemini listens to the recording. Better with accents and noise; uses your key's quota.",
+  "voiceHandsFreeHeading": "Hands-free",
+  "voiceConversationMode": "Conversation mode",
+  "voiceConversationModeDetail": "After Pip answers, keep listening for your reply.",
+  "voiceOpenMic": "Talk without a wake word",
+  "voiceOpenMicDetail": "While Pip is open, anything you say is for Pip.",
+  "voiceWakeWord": "\"Hey Pip\" wake word",
+  "voiceWakeWordDetail": "Listen in the background for Pip's name.",
+  "voicePrivacyNote": "Pip only listens while the app is open. Accurate mode sends the recording to Google with your key; nothing is stored.",
+  "voiceTryIt": "Try it",
+  "voiceHeard": "Heard: \"{text}\"",
+  "@voiceHeard": {
+    "placeholders": {
+      "text": {
+        "type": "String"
+      }
+    }
+  },
+  "voiceHeardNothing": "I didn't catch anything. Try again a little louder."
 }

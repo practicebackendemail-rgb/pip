@@ -16,6 +16,7 @@ abstract final class AppRoutes {
   static const String settingsAiModel = '/settings/ai-model';
   static const String settingsConnections = '/settings/connections';
   static const String settingsBackup = '/settings/backup';
+  static const String settingsVoice = '/settings/voice';
   static const String settingsSetupAgain = '/settings/setup';
 
   /// Routes reachable before setup is finished.

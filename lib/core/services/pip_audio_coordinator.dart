@@ -1,7 +1,11 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
+import '../../features/voice/data/gemini_voice_capture.dart';
+import '../../features/voice/data/voice_settings.dart';
+import '../../features/voice/domain/speech_transcriber.dart';
 import 'pip_sfx_service.dart';
+import 'wake_word.dart';
 
 enum PipAudioSessionState {
   idle,
@@ -32,6 +36,15 @@ class PipAudioCoordinator extends ChangeNotifier {
   String get lastRecognizedWords => _lastRecognizedWords;
 
   void Function(String query)? onCommandReceived;
+
+  /// Accurate (Gemini audio) listening; set at startup. Null = on-device only.
+  GeminiVoiceCapture? geminiCapture;
+  VoiceSettings get _settings => VoiceSettings.instance;
+
+  /// Last listening problem, in words for the user (cleared on success).
+  final ValueNotifier<String?> lastError = ValueNotifier(null);
+
+  bool get _useGemini => _settings.engine == SpeechEngine.geminiAudio && geminiCapture != null;
 
   PipAudioCoordinator() {
     init();
@@ -86,8 +99,16 @@ class PipAudioCoordinator extends ChangeNotifier {
 
   /// Starts passive continuous background listening for wake words ("Pip", "Hey Pip", etc.)
   Future<void> startPassiveWakeLoop() async {
-    if (!_isInitialized || _speech.isListening || !_isHandsFreeActive) return;
+    if (!_isHandsFreeActive) return;
     if (_sessionState == PipAudioSessionState.speaking || _sessionState == PipAudioSessionState.processing) return;
+    if (_settings.openMic && _useGemini && onCommandReceived != null) {
+      // Open mic, accurate mode: the voice detector is the trigger.
+      if (geminiCapture!.isRecording) return;
+      _sessionState = PipAudioSessionState.passiveListening;
+      notifyListeners();
+      return _listenWithGemini(onCommandReceived!, followUp: false, alwaysOn: true);
+    }
+    if (!_isInitialized || _speech.isListening) return;
 
     try {
       _sessionState = PipAudioSessionState.passiveListening;
@@ -98,9 +119,12 @@ class PipAudioCoordinator extends ChangeNotifier {
           final words = result.recognizedWords.toLowerCase().trim();
           debugPrint('Passive stream heard: "$words"');
 
-          if (_matchesWakeWord(words)) {
-            final followUp = extractFollowUpCommand(words);
+          if (_settings.wakeWord && WakeWord.matches(words)) {
+            final followUp = WakeWord.followUp(words);
             handleWakeDetected(followUp: followUp);
+          } else if (_settings.openMic && result.finalResult && words.split(' ').length >= 2) {
+            // Open mic: any real sentence is for Pip, no wake word needed.
+            handleWakeDetected(followUp: result.recognizedWords.trim());
           }
         },
         listenOptions: stt.SpeechListenOptions(
@@ -117,13 +141,14 @@ class PipAudioCoordinator extends ChangeNotifier {
   }
 
   /// Triggers full active command capture (when wake word is detected or manual mic clicked)
-  Future<void> startActiveListening({required Function(String query) onQuery}) async {
+  Future<void> startActiveListening({required Function(String query) onQuery, bool followUp = false}) async {
     onCommandReceived = onQuery;
     await _speech.stop();
     _sessionState = PipAudioSessionState.activeCommandListening;
     _lastRecognizedWords = '';
     notifyListeners();
-    PipSfxService.listen(); // "boop-beep": the mic is open
+    if (!followUp) PipSfxService.listen(); // "boop-beep": the mic is open
+    if (_useGemini) return _listenWithGemini(onQuery, followUp: followUp);
 
     try {
       await _speech.listen(
@@ -138,6 +163,9 @@ class PipAudioCoordinator extends ChangeNotifier {
           }
         },
         listenOptions: stt.SpeechListenOptions(
+          // A follow-up gives up sooner if you don't answer.
+          pauseFor: Duration(seconds: followUp ? 3 : 4),
+          listenFor: Duration(seconds: followUp ? 8 : 30),
           listenMode: stt.ListenMode.dictation,
           partialResults: true,
           cancelOnError: true,
@@ -149,9 +177,30 @@ class PipAudioCoordinator extends ChangeNotifier {
     }
   }
 
+  /// Accurate mode: record until you stop talking, then Gemini transcribes.
+  Future<void> _listenWithGemini(Function(String query) onQuery, {required bool followUp, bool alwaysOn = false}) async {
+    final result = await geminiCapture!.listenOnce(followUp: followUp, alwaysOn: alwaysOn);
+    if (_sessionState == PipAudioSessionState.speaking) return; // Pip started talking meanwhile
+    _sessionState = PipAudioSessionState.idle;
+    notifyListeners();
+    if (result == null) {
+      if (alwaysOn) _resumeHandsFree();
+      return;
+    }
+    if (!result.isSuccess) {
+      lastError.value = result.error;
+      _resumeHandsFree();
+      return;
+    }
+    lastError.value = null;
+    _lastRecognizedWords = result.text!;
+    onQuery(result.text!.trim());
+  }
+
   Future<void> stopListening() async {
     try {
       await _speech.stop();
+      await geminiCapture?.stop();
     } catch (_) {}
     _sessionState = PipAudioSessionState.idle;
     notifyListeners();
@@ -183,6 +232,7 @@ class PipAudioCoordinator extends ChangeNotifier {
   void onPlaybackStarted() {
     _sessionState = PipAudioSessionState.speaking;
     _speech.stop();
+    geminiCapture?.stop(); // never transcribe Pip's own voice
     notifyListeners();
   }
 
@@ -195,13 +245,29 @@ class PipAudioCoordinator extends ChangeNotifier {
     }
   }
 
+  /// Pip stopped talking: in conversation mode the mic reopens for a
+  /// follow-up; otherwise hands-free listening resumes.
   void onPlaybackFinished() {
+    if (_sessionState != PipAudioSessionState.speaking) return;
     _sessionState = PipAudioSessionState.idle;
     notifyListeners();
-    if (_isHandsFreeActive) {
-      Future.delayed(const Duration(milliseconds: 400), startPassiveWakeLoop);
-    }
+    final onQuery = onCommandReceived;
+    Future.delayed(const Duration(milliseconds: 350), () {
+      if (_sessionState != PipAudioSessionState.idle) return;
+      if (_settings.conversationMode && onQuery != null) {
+        startActiveListening(onQuery: onQuery, followUp: true);
+      } else {
+        _resumeHandsFree();
+      }
+    });
   }
+
+  void _resumeHandsFree() {
+    if (_isHandsFreeActive) Future.delayed(const Duration(milliseconds: 400), startPassiveWakeLoop);
+  }
+
+  /// Applies [VoiceSettings] (call after they change).
+  void applySettings() => toggleHandsFree(_settings.handsFree);
 
   void toggleHandsFree(bool enable) {
     _isHandsFreeActive = enable;
@@ -211,40 +277,6 @@ class PipAudioCoordinator extends ChangeNotifier {
       stopListening();
     }
     notifyListeners();
-  }
-
-  bool _matchesWakeWord(String text) {
-    if (text.isEmpty) return false;
-    final clean = text.replaceAll(RegExp(r'[^\w\s]'), '').trim();
-    final tokens = clean.split(RegExp(r'\s+'));
-
-    const triggers = {
-      'pip', 'pipp', 'peep', 'pepe', 'tip', 'tipp', 'pit', 'pitt',
-      'pete', 'papp', 'bib', 'bip', 'babe', 'baby', 'bob', 'beep', 'deep'
-    };
-
-    for (final t in tokens) {
-      if (triggers.contains(t)) return true;
-    }
-
-    const salutations = {'hey', 'hi', 'hello', 'ok', 'okay', 'yo'};
-    for (int i = 0; i < tokens.length - 1; i++) {
-      if (salutations.contains(tokens[i])) {
-        final next = tokens[i + 1];
-        if (triggers.contains(next) || next.startsWith('p') || next.startsWith('b')) {
-          return true;
-        }
-      }
-    }
-    return false;
-  }
-
-  static String extractFollowUpCommand(String raw) {
-    final pattern = RegExp(
-      r'^\s*(hey|hi|hello|ok|okay|yo)?\s*(pip|babe|baby|peep|tip|pete|beep|bip|bib)\s*[,:\.\-]?\s*',
-      caseSensitive: false,
-    );
-    return raw.replaceAll(pattern, '').trim();
   }
 
   @override

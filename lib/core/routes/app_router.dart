@@ -1,6 +1,7 @@
 import 'package:flutter/widgets.dart';
 import 'package:go_router/go_router.dart';
 import '../../features/onboarding/onboarding_flow.dart';
+import '../../features/voice/presentation/voice_settings_page.dart';
 import '../../features/reminders/presentation/screens/alarms_reminders_screen.dart';
 import '../../screens/pip_home_screen.dart';
 import '../../screens/settings/pip_settings_screen.dart';
@@ -35,6 +36,7 @@ GoRouter buildAppRouter(OnboardingGate gate, {GlobalKey<NavigatorState>? navigat
       _page(AppRoutes.settingsAiModel, (_, _) => const AiModelPage()),
       _page(AppRoutes.settingsConnections, (_, _) => const ConnectionsPage()),
       _page(AppRoutes.settingsBackup, (_, _) => const BackupPage()),
+      _page(AppRoutes.settingsVoice, (_, _) => const VoiceSettingsPage()),
       _page(AppRoutes.settingsSetupAgain, (_, _) => const OnboardingFlow(rerun: true)),
     ],
   );
