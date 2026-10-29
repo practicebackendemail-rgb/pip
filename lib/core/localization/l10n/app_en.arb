@@ -92,6 +92,7 @@
   "ledgeBriefingIdle": "Here's your day. Ask me about anything in it.",
   "ledgeActivityIdle": "Everything I've done for you. Undo anything that wasn't right.",
   "chipBriefMe": "Brief me",
+  "chipPlay": "Play a game",
   "chipPlanDay": "Plan my day",
   "chipWhatsNext": "What's next?",
   "chipMoveOverdue": "Move overdue to tomorrow",

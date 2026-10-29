@@ -15,6 +15,9 @@ abstract final class AppRoutes {
   static const String alarms = '/alarms';
   static const String memory = '/memory';
 
+  static const String games = '/games';
+  static String game(String slug) => '$games/$slug';
+
   static const String settings = '/settings';
   static const String settingsPersonality = '/settings/personality';
   static const String settingsAiModel = '/settings/ai-model';

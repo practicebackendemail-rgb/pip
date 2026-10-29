@@ -442,6 +442,12 @@ abstract class AppLocalizations {
   /// **'Brief me'**
   String get chipBriefMe;
 
+  /// No description provided for @chipPlay.
+  ///
+  /// In en, this message translates to:
+  /// **'Play a game'**
+  String get chipPlay;
+
   /// No description provided for @chipPlanDay.
   ///
   /// In en, this message translates to:

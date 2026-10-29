@@ -207,6 +207,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get chipBriefMe => 'Brief me';
 
   @override
+  String get chipPlay => 'Play a game';
+
+  @override
   String get chipPlanDay => 'Plan my day';
 
   @override

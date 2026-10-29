@@ -185,6 +185,11 @@ class _HomeChips extends StatelessWidget {
             label: Text(l10n.chipBriefMe),
             onPressed: () => context.push(AppRoutes.briefing),
           ),
+          ActionChip(
+            avatar: const Icon(Icons.sports_esports_outlined, size: 18),
+            label: Text(l10n.chipPlay),
+            onPressed: () => context.push(AppRoutes.games),
+          ),
           if (shell != null) ...[
             ActionChip(
               avatar: const Icon(Icons.checklist, size: 18),

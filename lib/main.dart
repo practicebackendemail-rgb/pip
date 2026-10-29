@@ -29,6 +29,7 @@ import 'features/activity/data/activity_data.dart';
 import 'features/activity/presentation/activity_cubit.dart';
 import 'features/companion/presentation/cubit/pip_stage_cubit.dart';
 import 'features/companion/presentation/widgets/pip_screen_context.dart';
+import 'core/routes/app_navigation.dart';
 import 'features/outside/desktop_sizes.dart';
 import 'features/outside/home_widget_sync.dart';
 import 'features/presence/presence_mode.dart';
@@ -114,6 +115,7 @@ class _PersonalAssistantAppState extends State<PersonalAssistantApp>
     // Ctrl+Shift+P (or the tray) summons Pip already listening.
     PipDesktopWindowManager.onSummon = _listenFromOutside;
     _homeWidget.start();
+    AppNavigation.router = _router;
     _notificationTaps = PipNotificationService.openedItems.listen((_) => _openAlarms());
     // Reflection, then embedding backfill, once the first frame is up
     WidgetsBinding.instance.addPostFrameCallback((_) async {
