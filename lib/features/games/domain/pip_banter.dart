@@ -23,6 +23,12 @@ enum GameEvent {
   roundPipWins,
   roundTie,
   rematch,
+
+  /// Chess.
+  youCapture,
+  pipCaptures,
+  youCheck,
+  pipChecks,
 }
 
 /// One reaction: Pip's face, a line and a sound.
@@ -109,6 +115,26 @@ class PipBanter {
       'Same! Great minds.',
       'Jinx!',
       'Again!',
+    ]),
+    GameEvent.youCapture: (PipMood.sad, PipSoundCue.sad, [
+      'Hey! I needed that.',
+      'Ouch. That one hurt.',
+      'Rude! …Good move, though.',
+    ]),
+    GameEvent.pipCaptures: (PipMood.laughing, PipSoundCue.laugh, [
+      "Mine now. Thanks!",
+      'Yoink!',
+      'Did you leave that there for me?',
+    ]),
+    GameEvent.youCheck: (PipMood.unsure, PipSoundCue.unsure, [
+      'Check?! Eek, my king!',
+      'Whoa, my king is in trouble.',
+      'Okay okay, I see it.',
+    ]),
+    GameEvent.pipChecks: (PipMood.excited, PipSoundCue.excited, [
+      'Check! Watch your king.',
+      'Check! Where will you run?',
+      "Check. I'm coming for you.",
     ]),
     GameEvent.rematch: (PipMood.excited, PipSoundCue.excited, [
       'Round two! This time it\'s personal.',

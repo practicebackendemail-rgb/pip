@@ -17,9 +17,11 @@ import '../../screens/what_pip_knows_screen.dart';
 import '../theme/app_motion_tokens.dart';
 import '../../features/brains/presentation/brains_page.dart';
 import '../../features/games/domain/game_kind.dart';
+import '../../features/games/presentation/screens/chess_screen.dart';
 import '../../features/games/presentation/screens/four_in_row_screen.dart';
 import '../../features/games/presentation/screens/game_hub_screen.dart';
 import '../../features/games/presentation/screens/rps_screen.dart';
+import '../../features/games/presentation/screens/tic_tac_toe_screen.dart';
 import '../../features/games/presentation/screens/twenty_questions_screen.dart';
 import 'app_routes.dart';
 import 'onboarding_gate.dart';
@@ -63,6 +65,8 @@ GoRouter buildAppRouter(OnboardingGate gate, {GlobalKey<NavigatorState>? navigat
             GameKind.fourInRow => const FourInRowScreen(),
             GameKind.rockPaperScissors => const RpsScreen(),
             GameKind.twentyQuestions => const TwentyQuestionsScreen(),
+            GameKind.ticTacToe => const TicTacToeScreen(),
+            GameKind.chess => const ChessScreen(),
             null => const GameHubScreen(),
           }),
       full(AppRoutes.settings, (_, _) => const PipSettingsScreen()),

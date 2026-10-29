@@ -3,7 +3,9 @@
 enum GameKind {
   fourInRow('four-in-row'),
   rockPaperScissors('rps'),
-  twentyQuestions('20q');
+  twentyQuestions('20q'),
+  ticTacToe('tic-tac-toe'),
+  chess('chess');
 
   final String slug;
   const GameKind(this.slug);

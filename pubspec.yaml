@@ -54,6 +54,7 @@ dependencies:
   go_router: ^17.5.0
   record: ^6.2.1
   flutter_gemma: ^0.13.6
+  chess: ^0.8.1
 
 dev_dependencies:
   flutter_test:

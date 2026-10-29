@@ -59,6 +59,8 @@ class _GameHubScreenState extends State<GameHubScreen> {
     (GameKind.fourInRow, 'Four in a row', 'Drop discs, line up four', Icons.grid_view_rounded, Arcade.amber),
     (GameKind.rockPaperScissors, 'Rock paper scissors', 'Best of five, tap or shout', Icons.back_hand_rounded, Arcade.pink),
     (GameKind.twentyQuestions, '20 questions', 'Think of a thing. Pip guesses.', Icons.psychology_alt_rounded, Arcade.teal),
+    (GameKind.ticTacToe, 'Tic-tac-toe', 'X-O, quick as a blink', Icons.tag_rounded, Arcade.amber),
+    (GameKind.chess, 'Chess', 'The big one. You play white.', Icons.castle_rounded, Arcade.violet),
   ];
 
   @override

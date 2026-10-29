@@ -9,14 +9,14 @@ class StartGameTool extends PipTool {
       : super(
           name: 'start_game',
           description: 'Open game mode to play a two-player game with the user. Use when they want to play, '
-              'are bored, or name a game. Games: four_in_row, rock_paper_scissors, twenty_questions. '
+              'are bored, or name a game. Games: four_in_row, rock_paper_scissors, twenty_questions, tic_tac_toe, chess. '
               'Leave game empty to show the game picker.',
           confirmationLevel: ToolConfirmationLevel.level0ReadOnly,
           parameters: const [
             ToolParameterSpec(
               name: 'game',
               type: 'string',
-              description: 'four_in_row, rock_paper_scissors or twenty_questions; empty for the picker.',
+              description: 'four_in_row, rock_paper_scissors, twenty_questions, tic_tac_toe or chess; empty for the picker.',
               isRequired: false,
             ),
           ],
@@ -24,6 +24,8 @@ class StartGameTool extends PipTool {
 
   static GameKind? kindFor(String? name) {
     final n = (name ?? '').toLowerCase().replaceAll(RegExp(r'[\s-]'), '_');
+    if (n.contains('chess')) return GameKind.chess;
+    if (n.contains('tic') || n.contains('toe') || n.contains('x_o') || n.contains('xo') || n.contains('nought')) return GameKind.ticTacToe;
     if (n.contains('four') || n.contains('connect')) return GameKind.fourInRow;
     if (n.contains('rock') || n.contains('rps') || n.contains('scissor')) return GameKind.rockPaperScissors;
     if (n.contains('twenty') || n.contains('20') || n.contains('question')) return GameKind.twentyQuestions;

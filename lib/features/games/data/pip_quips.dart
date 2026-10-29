@@ -43,6 +43,10 @@ class PipGameHost {
     GameEvent.roundYouWin,
     GameEvent.roundPipWins,
     GameEvent.roundTie,
+    GameEvent.youCheck,
+    GameEvent.pipChecks,
+    GameEvent.youCapture,
+    GameEvent.pipCaptures,
   };
 
   /// Reacts to [e] now; [situation] describes the game for the model.
