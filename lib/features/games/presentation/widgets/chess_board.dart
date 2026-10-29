@@ -74,9 +74,14 @@ class ChessBoardView extends StatelessWidget {
     final isTarget = targets.contains(sq);
     final isSelected = selected == sq;
     final isCheck = checkSquare == sq;
-    var base = light ? _light : _dark;
-    if (isLast) base = Color.lerp(base, Arcade.amber, .28)!;
-    if (isSelected) base = Color.lerp(base, Arcade.amber, .5)!;
+    final base = light ? _light : _dark;
+    // Last move tinted by who made it: amber for you, teal for Pip.
+    final mover = isLast ? game.get(lastMove!.$2)?.color : null;
+    final tint = isSelected
+        ? Arcade.amber.withValues(alpha: .45)
+        : mover == null
+            ? null
+            : (mover == ch.Color.WHITE ? Arcade.amber : Arcade.teal).withValues(alpha: .28);
     final name = piece == null ? 'empty' : '${piece.color == ch.Color.WHITE ? 'your' : "Pip's"} ${ChessAi.pieceName(piece.type.name)}';
     return Semantics(
       button: true,
@@ -94,6 +99,7 @@ class ChessBoardView extends StatelessWidget {
           child: Stack(
             fit: StackFit.expand,
             children: [
+              if (tint != null) ColoredBox(color: tint),
               if (file == 0) _coord('$rank', Alignment.topLeft, light),
               if (rank == 1) _coord('abcdefgh'[file], Alignment.bottomRight, light),
               if (piece != null)
@@ -144,15 +150,7 @@ class _Piece extends StatelessWidget {
   Widget build(BuildContext context) {
     final color = white ? Arcade.amber : Arcade.teal;
     final glyph = LayoutBuilder(
-      builder: (context, c) => Center(
-        child: Text(
-          _glyph[letter]!,
-          style: TextStyle(fontSize: c.maxHeight * .78, height: 1, color: color, shadows: [
-            const Shadow(color: Colors.black54, offset: Offset(0, 2), blurRadius: 2),
-            ...Arcade.glow(color, strength: .5),
-          ]),
-        ),
-      ),
+      builder: (context, c) => Center(child: ChessGlyph(letter: letter, color: color, size: c.maxHeight * .78, glow: .5)),
     );
     if (!animate || MediaQuery.disableAnimationsOf(context)) return glyph;
     return TweenAnimationBuilder<double>(
@@ -163,6 +161,59 @@ class _Piece extends StatelessWidget {
       child: glyph,
     );
   }
+}
+
+/// One piece in [color]. The pawn is drawn rather than typed: phones show
+/// the pawn character as a grey emoji whatever colour it's given.
+class ChessGlyph extends StatelessWidget {
+  final String letter;
+  final Color color;
+  final double size;
+  final double glow;
+  const ChessGlyph({super.key, required this.letter, required this.color, required this.size, this.glow = 0});
+
+  @override
+  Widget build(BuildContext context) {
+    if (letter == 'p') {
+      return SizedBox.square(dimension: size, child: CustomPaint(painter: _PawnPainter(color, glow)));
+    }
+    return Text(
+      _glyph[letter]!,
+      style: TextStyle(fontSize: size, height: 1, color: color, shadows: [
+        if (glow > 0) const Shadow(color: Colors.black54, offset: Offset(0, 2), blurRadius: 2),
+        if (glow > 0) ...Arcade.glow(color, strength: glow),
+      ]),
+    );
+  }
+}
+
+class _PawnPainter extends CustomPainter {
+  final Color color;
+  final double glow;
+  _PawnPainter(this.color, this.glow);
+
+  @override
+  void paint(Canvas canvas, Size s) {
+    final w = s.width, h = s.height;
+    final path = Path()
+      ..addOval(Rect.fromCircle(center: Offset(w * .5, h * .27), radius: w * .15))
+      ..moveTo(w * .36, h * .43)
+      ..lineTo(w * .64, h * .43)
+      ..lineTo(w * .6, h * .5)
+      ..quadraticBezierTo(w * .6, h * .68, w * .72, h * .78)
+      ..lineTo(w * .28, h * .78)
+      ..quadraticBezierTo(w * .4, h * .68, w * .4, h * .5)
+      ..close()
+      ..addRRect(RRect.fromRectAndRadius(Rect.fromLTRB(w * .2, h * .78, w * .8, h * .9), Radius.circular(w * .05)));
+    if (glow > 0) {
+      canvas.drawPath(path.shift(Offset(0, h * .03)), Paint()..color = Colors.black54..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2));
+      canvas.drawPath(path, Paint()..color = color.withValues(alpha: .6 * glow)..maskFilter = MaskFilter.blur(BlurStyle.normal, 6 * glow));
+    }
+    canvas.drawPath(path, Paint()..color = color);
+  }
+
+  @override
+  bool shouldRepaint(_PawnPainter o) => o.color != color || o.glow != glow;
 }
 
 /// Pieces taken so far, smallest first.
@@ -183,7 +234,7 @@ class CapturedRow extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           for (final p in sorted)
-            Text(_glyph[p]!, style: TextStyle(fontSize: 18, color: (white ? Arcade.amber : Arcade.teal).withValues(alpha: .8))),
+            ChessGlyph(letter: p, color: (white ? Arcade.amber : Arcade.teal).withValues(alpha: .8), size: 18),
         ],
       ),
     );
@@ -214,7 +265,7 @@ Future<String?> showPromotionPicker(BuildContext context) => showDialog<String>(
                         onTap: () => Navigator.of(context).pop(p),
                         child: Padding(
                           padding: const EdgeInsets.all(8),
-                          child: Text(_glyph[p]!, style: TextStyle(fontSize: 42, color: Arcade.amber, shadows: Arcade.glow(Arcade.amber))),
+                          child: ChessGlyph(letter: p, color: Arcade.amber, size: 42, glow: 1),
                         ),
                       ),
                     ),

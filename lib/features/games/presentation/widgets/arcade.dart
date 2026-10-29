@@ -174,6 +174,8 @@ class _ArcadeButtonState extends State<ArcadeButton> {
   Widget build(BuildContext context) {
     final enabled = widget.onPressed != null;
     final c = enabled ? widget.color : Arcade.muted;
+    // Light text on dark buttons, dark text on bright ones.
+    final ink = c.computeLuminance() < .2 ? Arcade.text : Arcade.night;
     final depth = _down ? 1.0 : 5.0;
     return Semantics(
       button: true,
@@ -203,9 +205,9 @@ class _ArcadeButtonState extends State<ArcadeButton> {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              if (widget.icon != null) ...[Icon(widget.icon, color: Arcade.night, size: widget.fontSize + 3), const SizedBox(width: 8)],
+              if (widget.icon != null) ...[Icon(widget.icon, color: ink, size: widget.fontSize + 3), const SizedBox(width: 8)],
               Text(widget.label.toUpperCase(),
-                  style: TextStyle(color: Arcade.night, fontWeight: FontWeight.w900, letterSpacing: 1.2, fontSize: widget.fontSize)),
+                  style: TextStyle(color: ink, fontWeight: FontWeight.w900, letterSpacing: 1.2, fontSize: widget.fontSize)),
             ],
           ),
         ),

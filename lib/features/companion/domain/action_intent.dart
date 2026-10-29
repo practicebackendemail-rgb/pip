@@ -8,12 +8,14 @@ abstract final class ActionIntent {
   static final RegExp _command = RegExp(
     r'^(please\s+|can you\s+|could you\s+|pip,?\s+)*'
     r'(remind|set|wake|add|create|make|schedule|cancel|delete|remove|move|reschedule|book|send|email|'
-    r'mark|complete|tick|snooze|save|note|put|turn off|switch off)\b',
+    r'mark|complete|tick|snooze|save|note|put|turn off|switch off|play)\b',
     caseSensitive: false,
   );
 
   static final RegExp _anywhere = RegExp(
-    r'\b(remind me|wake me|set (an |a )?(alarm|reminder|timer)|alarm (for|at)|add (it |this )?to my (list|tasks|calendar))\b',
+    r'\b(remind me|wake me|set (an |a )?(alarm|reminder|timer)|alarm (for|at)|add (it |this )?to my (list|tasks|calendar)|'
+    r"let'?s play|wanna play|want to play|play (a |some )?games?|"
+    r'play (chess|tic.?tac.?toe|x.?o|four in a row|rock paper scissors|20 questions))\b',
     caseSensitive: false,
   );
 

@@ -18,6 +18,7 @@ import '../theme/app_motion_tokens.dart';
 import '../../features/brains/presentation/brains_page.dart';
 import '../../features/games/domain/game_kind.dart';
 import '../../features/games/presentation/screens/chess_screen.dart';
+import '../../features/games/presentation/widgets/arcade_transitions.dart';
 import '../../features/games/presentation/screens/four_in_row_screen.dart';
 import '../../features/games/presentation/screens/game_hub_screen.dart';
 import '../../features/games/presentation/screens/rps_screen.dart';
@@ -60,8 +61,8 @@ GoRouter buildAppRouter(OnboardingGate gate, {GlobalKey<NavigatorState>? navigat
         ],
       ),
       full(AppRoutes.memory, (_, _) => const WhatPipKnowsScreen()),
-      full(AppRoutes.games, (_, _) => const GameHubScreen()),
-      full('${AppRoutes.games}/:kind', (_, state) => switch (GameKind.fromSlug(state.pathParameters['kind'])) {
+      _arcade(AppRoutes.games, ArcadeEntrance.cabinet, root, (_, _) => const GameHubScreen()),
+      _arcade('${AppRoutes.games}/:kind', ArcadeEntrance.ready, root, (_, state) => switch (GameKind.fromSlug(state.pathParameters['kind'])) {
             GameKind.fourInRow => const FourInRowScreen(),
             GameKind.rockPaperScissors => const RpsScreen(),
             GameKind.twentyQuestions => const TwentyQuestionsScreen(),
@@ -93,6 +94,16 @@ String? routeGuard(bool setupDone, String location) {
 
 /// Every screen fades in with the screen-transition token; reduce motion
 /// makes it instant.
+/// Game mode: the arcade powers on like an old set; games open with a
+/// "PLAYER 1 READY" splash.
+GoRoute _arcade(String path, ArcadeEntrance entrance, GlobalKey<NavigatorState> parent,
+        Widget Function(BuildContext, GoRouterState) build) =>
+    GoRoute(
+      path: path,
+      parentNavigatorKey: parent,
+      pageBuilder: (context, state) => arcadePage(key: state.pageKey, child: build(context, state), entrance: entrance),
+    );
+
 GoRoute _page(
   String path,
   Widget Function(BuildContext, GoRouterState) build, {

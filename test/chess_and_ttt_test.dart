@@ -3,6 +3,7 @@ import 'package:chess/chess.dart' as ch;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:personal_assistant/core/services/tools/game_tools.dart';
+import 'package:personal_assistant/features/companion/domain/action_intent.dart';
 import 'package:personal_assistant/features/games/domain/chess_ai.dart';
 import 'package:personal_assistant/features/games/domain/game_kind.dart';
 import 'package:personal_assistant/features/games/domain/tic_tac_toe.dart';
@@ -83,6 +84,13 @@ void main() {
       final upQueen = ch.Chess.fromFEN('rnb1kbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1');
       expect(ChessAi.evaluate(upQueen), greaterThan(800));
     });
+  });
+
+  test("'let's play' counts as an action Pip must actually do", () {
+    for (final t in ["Let's play chess", 'play a game with me', 'wanna play tic tac toe', 'Play X-O']) {
+      expect(ActionIntent.isCommand(t), isTrue, reason: t);
+    }
+    expect(ActionIntent.isCommand('do you like chess?'), isFalse);
   });
 
   test('the tool knows chess and X-O', () {
