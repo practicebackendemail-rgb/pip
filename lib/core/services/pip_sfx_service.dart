@@ -51,18 +51,31 @@ class PipSfxService {
   /// Loads every sound once. Safe to call repeatedly; play calls await it.
   static Future<void> preload() => _loading ??= _load();
 
+  /// Each sound loads on its own, so one failure doesn't leave the rest
+  /// without players.
   static Future<void> _load() async {
+    for (final sound in _files.keys) {
+      await _loadOne(sound);
+    }
+  }
+
+  static Future<AudioPlayer?> _loadOne(PipSound sound) async {
+    if (_players[sound] case final existing?) return existing;
+    final player = AudioPlayer(playerId: 'pip_${sound.name}');
     try {
-      final context = AudioContextConfig(focus: AudioContextConfigFocus.mixWithOthers).build();
-      for (final entry in _files.entries) {
-        final player = AudioPlayer(playerId: 'pip_${entry.key.name}');
-        await player.setAudioContext(context);
-        await player.setReleaseMode(ReleaseMode.stop);
-        await player.setSource(AssetSource(entry.value));
-        _players[entry.key] = player;
+      try {
+        await player.setAudioContext(AudioContextConfig(focus: AudioContextConfigFocus.mixWithOthers).build());
+      } catch (e) {
+        // Some devices reject the mixing context; the default still plays.
+        debugPrint('PipSfxService audio context (${sound.name}) not applied: $e');
       }
+      await player.setReleaseMode(ReleaseMode.stop);
+      await player.setSource(AssetSource(_files[sound]!));
+      return _players[sound] = player;
     } catch (e) {
-      debugPrint('PipSfxService preload error (non-fatal): $e');
+      debugPrint('PipSfxService could not load ${sound.name}: $e');
+      await player.dispose();
+      return null;
     }
   }
 
@@ -76,7 +89,8 @@ class PipSfxService {
     if (!enableAudio || !PresenceSettings.instance.allowSounds) return false;
     try {
       await preload();
-      final player = _players[sound];
+      // A sound that failed to preload gets another chance now.
+      final player = _players[sound] ?? await _loadOne(sound);
       if (player == null) throw StateError('player not loaded');
       await player.stop();
       await player.setVolume(volume);
