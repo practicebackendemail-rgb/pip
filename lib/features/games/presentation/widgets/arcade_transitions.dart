@@ -102,14 +102,14 @@ class _CabinetEntranceState extends State<_CabinetEntrance> {
               fit: StackFit.expand,
               children: [
                 // Night falls over whatever was behind.
-                Opacity(opacity: night, child: const _NightSky()),
+                _NightSky(alpha: night),
                 Transform.translate(
                   offset: Offset(0, (1 - rise) * (c.body.height + c.view.height * .1)),
                   child: Transform(
                     transform: camera,
                     child: Stack(
                       children: [
-                        _CabinetBody(c: c, lights: lights),
+                        RepaintBoundary(child: _CabinetBody(c: c, lights: lights)),
                         // The real arcade page, small, inside the screen.
                         Positioned.fromRect(
                           rect: c.screen,
@@ -118,30 +118,26 @@ class _CabinetEntranceState extends State<_CabinetEntrance> {
                             child: Stack(
                               fit: StackFit.expand,
                               children: [
-                                const ColoredBox(color: Colors.black),
-                                Opacity(
-                                  opacity: screenOn,
-                                  child: FittedBox(
-                                    fit: BoxFit.fill,
-                                    child: SizedBox.fromSize(size: c.view, child: child),
-                                  ),
+                                FittedBox(
+                                  fit: BoxFit.fill,
+                                  child: SizedBox.fromSize(size: c.view, child: RepaintBoundary(child: child)),
                                 ),
+                                // The screen warms up: a black veil lifts (cheaper than fading the page).
+                                if (screenOn < 1) IgnorePointer(child: ColoredBox(color: Colors.black.withValues(alpha: 1 - screenOn))),
                                 // Glass glare that fades as we pass through.
-                                IgnorePointer(
-                                  child: Opacity(
-                                    opacity: (1 - zoom) * .5,
-                                    child: const DecoratedBox(
+                                if (zoom < 1)
+                                  IgnorePointer(
+                                    child: DecoratedBox(
                                       decoration: BoxDecoration(
                                         gradient: LinearGradient(
                                           begin: Alignment.topLeft,
                                           end: Alignment.bottomRight,
-                                          colors: [Color(0x55FFFFFF), Color(0x00FFFFFF), Color(0x00FFFFFF)],
-                                          stops: [0, .35, 1],
+                                          colors: [Colors.white.withValues(alpha: .33 * (1 - zoom)), Colors.transparent, Colors.transparent],
+                                          stops: const [0, .35, 1],
                                         ),
                                       ),
                                     ),
                                   ),
-                                ),
                               ],
                             ),
                           ),
@@ -152,14 +148,15 @@ class _CabinetEntranceState extends State<_CabinetEntrance> {
                           top: c.body.top - c.width * .36,
                           width: c.width * .52,
                           height: c.width * .4,
-                          child: Opacity(
-                            opacity: 1 - zoom,
-                            child: PipDeskCompanion(
-                              mood: lights > .1 ? PipMood.excited : PipMood.happy,
-                              width: c.width * .52,
-                              height: c.width * .4,
-                            ),
-                          ),
+                          child: zoom > .35
+                              ? const SizedBox.shrink()
+                              : RepaintBoundary(
+                                  child: PipDeskCompanion(
+                                    mood: lights > .1 ? PipMood.excited : PipMood.happy,
+                                    width: c.width * .52,
+                                    height: c.width * .4,
+                                  ),
+                                ),
                         ),
                       ],
                     ),
@@ -175,16 +172,22 @@ class _CabinetEntranceState extends State<_CabinetEntrance> {
   }
 }
 
+/// Night gradient; [alpha] fades it in without an opacity layer.
 class _NightSky extends StatelessWidget {
-  const _NightSky();
+  final double alpha;
+  const _NightSky({this.alpha = 1});
 
   @override
-  Widget build(BuildContext context) => const DecoratedBox(
+  Widget build(BuildContext context) => DecoratedBox(
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [Arcade.night, Arcade.deep, Color(0xFF1B1036)],
+            colors: [
+              Arcade.night.withValues(alpha: alpha),
+              Arcade.deep.withValues(alpha: alpha),
+              const Color(0xFF1B1036).withValues(alpha: alpha),
+            ],
           ),
         ),
       );
@@ -215,7 +218,7 @@ class _CabinetBody extends StatelessWidget {
               ),
               borderRadius: BorderRadius.vertical(top: Radius.circular(w * .08), bottom: Radius.circular(w * .03)),
               border: Border.all(color: Color.lerp(Arcade.violet.withValues(alpha: .4), Arcade.violet, lights)!, width: 3),
-              boxShadow: Arcade.boxGlow(Arcade.violet, strength: .3 + .9 * lights),
+              boxShadow: Arcade.boxGlow(Arcade.violet, strength: .8),
             ),
           ),
         ),
@@ -273,7 +276,7 @@ class _Letter extends StatelessWidget {
           fontWeight: FontWeight.w900,
           letterSpacing: 3,
           color: Color.lerp(const Color(0xFF3A3020), Arcade.amber, on),
-          shadows: on > 0 ? Arcade.glow(Arcade.amber, strength: on * 1.3) : null,
+          shadows: on >= 1 ? Arcade.glow(Arcade.amber) : null,
         ),
       );
 }
@@ -303,11 +306,7 @@ class _BulbsPainter extends CustomPainter {
       }
       final on = (lights * n - i).clamp(0.0, 1.0);
       final color = Color.lerp(const Color(0xFF3A3020), i.isEven ? Arcade.amber : Arcade.pink, on)!;
-      if (on > 0) {
-        canvas.drawCircle(p, s.shortestSide * .07, Paint()
-          ..color = color.withValues(alpha: .5 * on)
-          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 5));
-      }
+      if (on > 0) canvas.drawCircle(p, s.shortestSide * .065, Paint()..color = color.withValues(alpha: .3 * on));
       canvas.drawCircle(p, s.shortestSide * .035, Paint()..color = color);
     }
   }
@@ -335,11 +334,7 @@ class _PanelPainter extends CustomPainter {
     for (final (i, color) in [Arcade.amber, Arcade.teal, Arcade.violet].indexed) {
       final p = Offset(s.width * (.55 + i * .14), s.height * (.5 - (i == 1 ? .08 : 0)));
       final on = _span(lights, .4 + i * .15, .6 + i * .15);
-      if (on > 0) {
-        canvas.drawCircle(p, s.height * .2, Paint()
-          ..color = color.withValues(alpha: .45 * on)
-          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6));
-      }
+      if (on > 0) canvas.drawCircle(p, s.height * .19, Paint()..color = color.withValues(alpha: .3 * on));
       canvas.drawCircle(p, s.height * .12, Paint()..color = Color.lerp(const Color(0xFF2A2350), color, on)!);
     }
   }
@@ -370,10 +365,14 @@ class _ReadySplash extends StatelessWidget {
             fit: StackFit.expand,
             children: [
               const _NightSky(),
-              Opacity(
-                opacity: leave,
-                child: Transform.translate(offset: Offset(0, 60 * (1 - leave)), child: child),
-              ),
+              if (leave > 0)
+                Transform.translate(
+                  offset: Offset(0, 60 * (1 - leave)),
+                  child: Stack(fit: StackFit.expand, children: [
+                    RepaintBoundary(child: child),
+                    if (leave < 1) IgnorePointer(child: ColoredBox(color: Arcade.night.withValues(alpha: 1 - leave))),
+                  ]),
+                ),
               IgnorePointer(
                 child: Opacity(
                   opacity: 1 - leave,
