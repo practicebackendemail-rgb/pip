@@ -6,7 +6,18 @@ import '../../../core/domain/llm_provider.dart';
 /// No native tools: Pip's structured-reply format carries tool calls as text.
 class LocalLlmProvider implements LlmProvider {
   final String label;
-  LocalLlmProvider({required this.label});
+
+  /// Chat template family (Qwen and Gemma format turns differently).
+  final ModelType modelType;
+
+  /// Language every reply must be in. Small models (Qwen especially) drift
+  /// into Chinese unless told on every turn.
+  final String replyLanguage;
+
+  LocalLlmProvider({required this.label, this.modelType = ModelType.general, this.replyLanguage = 'English'});
+
+  /// Added to the system prompt and to the latest user turn.
+  String get languageRule => 'Always reply in $replyLanguage only, never in any other language.';
 
   static InferenceModel? _model;
   static Future<InferenceModel>? _loading;
@@ -37,10 +48,14 @@ class LocalLlmProvider implements LlmProvider {
 
   Future<InferenceChat> _chatFor(List<LlmMessage> messages) async {
     final model = await _get();
-    final system = messages.where((m) => m.role == 'system').map((m) => m.content).join('\n\n');
-    final chat = await model.createChat(systemInstruction: system.isEmpty ? null : system, temperature: .6, topK: 40);
-    for (final m in flattenToolMessages(messages.where((m) => m.role != 'system').toList())) {
-      await chat.addQueryChunk(Message.text(text: m.content, isUser: m.role == 'user'));
+    final system = [...messages.where((m) => m.role == 'system').map((m) => m.content), languageRule].join('\n\n');
+    final chat = await model.createChat(systemInstruction: system, temperature: .6, topK: 40, modelType: modelType);
+    final turns = flattenToolMessages(messages.where((m) => m.role != 'system').toList());
+    final lastUser = turns.lastIndexWhere((m) => m.role == 'user');
+    for (var i = 0; i < turns.length; i++) {
+      final m = turns[i];
+      final text = i == lastUser ? '${m.content}\n\n($languageRule)' : m.content;
+      await chat.addQueryChunk(Message.text(text: text, isUser: m.role == 'user'));
     }
     return chat;
   }

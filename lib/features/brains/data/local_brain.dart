@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:ui' show Locale, PlatformDispatcher;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_gemma/flutter_gemma.dart';
@@ -121,5 +122,23 @@ class LocalBrain extends ChangeNotifier {
     notifyListeners();
   }
 
-  LocalLlmProvider provider() => LocalLlmProvider(label: active?.name ?? 'On-device');
+  LocalLlmProvider provider() => LocalLlmProvider(
+        label: active?.name ?? 'On-device',
+        modelType: ModelType.values.asNameMap()[active?.type] ?? ModelType.general,
+        replyLanguage: replyLanguageFor(PlatformDispatcher.instance.locale),
+      );
+
+  /// The device language as a name a small model understands.
+  @visibleForTesting
+  static String replyLanguageFor(Locale locale) => switch (locale.languageCode) {
+        'hi' => 'Hindi',
+        'mr' => 'Marathi',
+        'es' => 'Spanish',
+        'fr' => 'French',
+        'de' => 'German',
+        'pt' => 'Portuguese',
+        'ja' => 'Japanese',
+        'zh' => 'Chinese',
+        _ => 'English',
+      };
 }

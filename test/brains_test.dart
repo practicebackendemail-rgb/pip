@@ -1,5 +1,8 @@
 import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
+import 'dart:ui';
+import 'package:personal_assistant/features/brains/data/local_brain.dart';
+import 'package:personal_assistant/features/brains/data/local_llm_provider.dart';
 import 'package:personal_assistant/features/brains/data/pip_brains.dart';
 import 'package:personal_assistant/features/brains/domain/brain_routing.dart';
 import 'package:personal_assistant/features/brains/domain/cloud_model_info.dart';
@@ -63,6 +66,13 @@ void main() {
       expect(back.brainFor(BrainJob.briefing), Brain.local);
       expect(back.fallback, BrainFallback.ask);
     });
+  });
+
+  test('the on-device brain is told its reply language', () {
+    expect(LocalBrain.replyLanguageFor(const Locale('en', 'IN')), 'English');
+    expect(LocalBrain.replyLanguageFor(const Locale('hi')), 'Hindi');
+    expect(LocalBrain.replyLanguageFor(const Locale('xx')), 'English');
+    expect(LocalLlmProvider(label: 'Qwen').languageRule, contains('English only'));
   });
 
   test('jobs are guessed from what was asked', () {
