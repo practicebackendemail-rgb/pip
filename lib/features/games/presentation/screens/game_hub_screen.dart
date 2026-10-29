@@ -18,6 +18,8 @@ class GameHubScreen extends StatefulWidget {
 class _GameHubScreenState extends State<GameHubScreen> {
   Map<GameKind, GameScore> _scores = const {};
   GameDifficulty _level = GameDifficulty.fair;
+  bool _smart = true;
+  String? _stumped;
 
   @override
   void initState() {
@@ -29,14 +31,23 @@ class _GameHubScreenState extends State<GameHubScreen> {
   Future<void> _load() async {
     final scores = await GameScores.loadAll();
     final level = await GameScores.difficulty();
+    final smart = await GameScores.smartBanter();
+    final stumped = await GameScores.lastStumped();
     if (!mounted) return;
     setState(() {
       _scores = scores;
       _level = level;
+      _smart = smart;
+      _stumped = stumped;
     });
   }
 
   String get _greeting {
+    final tease = _stumped == null ? '' : ' Still thinking about "$_stumped" from 20 questions…';
+    return _scoreGreeting + tease;
+  }
+
+  String get _scoreGreeting {
     final total = _scores.values.fold((0, 0), (a, s) => (a.$1 + s.you, a.$2 + s.pip));
     if (total.$1 + total.$2 == 0) return "Game time! Pick one and I'll show you how it works.";
     if (total.$1 > total.$2) return "You're ${total.$1}–${total.$2} up overall. I want revenge!";
@@ -118,6 +129,24 @@ class _GameHubScreenState extends State<GameHubScreen> {
                           ),
                         ),
                     ],
+                  ),
+                  const SizedBox(height: 14),
+                  Semantics(
+                    toggled: _smart,
+                    label: 'Smart banter',
+                    child: SwitchListTile(
+                      value: _smart,
+                      activeThumbColor: Arcade.amber,
+                      title: Text('SMART BANTER', style: Arcade.title(Arcade.text, size: 13).copyWith(shadows: const [])),
+                      subtitle: const Text(
+                        'At big moments Pip asks your AI model for a fresh line. Off: written lines only, never uses your quota.',
+                        style: TextStyle(color: Arcade.muted, fontSize: 12),
+                      ),
+                      onChanged: (on) {
+                        setState(() => _smart = on);
+                        GameScores.setSmartBanter(on);
+                      },
+                    ),
                   ),
                 ],
               ),

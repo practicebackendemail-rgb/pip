@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../data/game_scores.dart';
+import '../../data/pip_quips.dart';
 import '../../domain/four_in_row.dart';
 import '../../domain/game_kind.dart';
 import '../../domain/pip_banter.dart';
@@ -19,11 +20,9 @@ class FourInRowScreen extends StatefulWidget {
 }
 
 class _FourInRowScreenState extends State<FourInRowScreen> {
-  final _banter = PipBanter();
   FourInRow _board = FourInRow();
   GameDifficulty _level = GameDifficulty.fair;
-  late Reaction _reaction = _banter.react(GameEvent.start);
-  int _reactionId = 0;
+  late final PipGameHost _host = PipGameHost(game: 'Four in a row', onChange: _refresh, opening: PipBanter().react(GameEvent.start));
   int _you = 0, _pip = 0, _round = 1;
   (int, int)? _lastDrop;
   List<(int, int)> _winLine = const [];
@@ -35,26 +34,29 @@ class _FourInRowScreenState extends State<FourInRowScreen> {
   @override
   void initState() {
     super.initState();
-    Arcade.sound(_reaction.sound);
+    Arcade.sound(_host.reaction.sound);
     GameScores.difficulty().then((d) => _level = d);
     GameScores.load(GameKind.fourInRow).then((s) => mounted ? setState(() => _scoreLine = s.line) : null);
   }
 
-  void _react(GameEvent e) {
-    final r = _banter.react(e);
-    Arcade.sound(r.sound);
-    setState(() {
-      _reaction = r;
-      _reactionId++;
-    });
+  void _refresh() {
+    if (mounted) setState(() {});
   }
+
+  void _react(GameEvent e, {String? situation}) => Arcade.sound(_host.react(e, situation: situation).sound);
+
+  /// What's going on, for Pip's AI lines.
+  String _situation(String what) =>
+      '$what Round $_round; rounds won so far: user $_you, Pip $_pip. Pip is playing on ${_level.name}.';
 
   void _play(int col) {
     if (_pipTurn || _over || !_board.canDrop(col)) return;
     final row = _board.drop(col, FourInRow.you);
     setState(() => _lastDrop = (row, col));
     if (_finishIfOver()) return;
-    _react(_board.winningMoves(FourInRow.you).isNotEmpty ? GameEvent.youThreaten : GameEvent.yourMove);
+    _board.winningMoves(FourInRow.you).isNotEmpty
+        ? _react(GameEvent.youThreaten, situation: _situation('The user just set up a winning move Pip did not see coming.'))
+        : _react(GameEvent.yourMove);
     _pipPlays();
   }
 
@@ -75,9 +77,9 @@ class _FourInRowScreenState extends State<FourInRowScreen> {
     });
     if (_finishIfOver()) return;
     if (blocking.contains(col)) {
-      _react(GameEvent.pipBlocks);
+      _react(GameEvent.pipBlocks, situation: _situation('Pip just blocked the user from winning.'));
     } else if (_board.winningMoves(FourInRow.pip).isNotEmpty) {
-      _react(GameEvent.pipThreatens);
+      _react(GameEvent.pipThreatens, situation: _situation('Pip is now one disc away from winning.'));
     } else {
       _react(GameEvent.pipMove);
     }
@@ -97,7 +99,15 @@ class _FourInRowScreenState extends State<FourInRowScreen> {
         _pip++;
       }
     });
-    _react(w == FourInRow.you ? GameEvent.youWin : w == FourInRow.pip ? GameEvent.pipWins : GameEvent.draw);
+    final moves = _board.cells.expand((r) => r).where((c) => c != 0).length;
+    _react(
+      w == FourInRow.you ? GameEvent.youWin : w == FourInRow.pip ? GameEvent.pipWins : GameEvent.draw,
+      situation: _situation(w == FourInRow.you
+          ? 'The user just beat Pip after $moves discs.'
+          : w == FourInRow.pip
+              ? 'Pip just won after $moves discs.'
+              : 'The board filled up: a draw.'),
+    );
     GameScores.record(GameKind.fourInRow, youWon: w == null ? null : w == FourInRow.you)
         .then((s) => mounted ? setState(() => _scoreLine = s.line) : null);
     return true;
@@ -124,8 +134,8 @@ class _FourInRowScreenState extends State<FourInRowScreen> {
   Widget build(BuildContext context) {
     return GameTable(
       title: 'Four in a row',
-      reaction: _reaction,
-      reactionId: _reactionId,
+      reaction: _host.reaction,
+      reactionId: _host.id,
       youScore: _you,
       pipScore: _pip,
       scoreLabel: _scoreLine,

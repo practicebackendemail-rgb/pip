@@ -8,6 +8,7 @@ import '../../../../widgets/pip_params.dart';
 import '../../../brains/data/pip_brains.dart';
 import '../../../brains/domain/brain_routing.dart';
 import '../../data/game_scores.dart';
+import '../../data/pip_quips.dart';
 import '../../domain/game_kind.dart';
 import '../../domain/pip_banter.dart';
 import '../../domain/twenty_questions.dart';
@@ -24,35 +25,48 @@ class TwentyQuestionsScreen extends StatefulWidget {
   State<TwentyQuestionsScreen> createState() => _TwentyQuestionsScreenState();
 }
 
-enum _Phase { intro, asking, thinking, over }
+enum _Phase { intro, asking, thinking, stumped, over }
 
 class _TwentyQuestionsScreenState extends State<TwentyQuestionsScreen> {
-  final _banter = PipBanter();
   TwentyQuestions _game = TwentyQuestions();
   _Phase _phase = _Phase.intro;
-  Reaction _reaction = const Reaction(PipMood.excited, "Think of anything: an animal, an object, a famous person. Don't tell me! Tap Ready.", PipSoundCue.excited);
-  int _reactionId = 0;
+  late final PipGameHost _host = PipGameHost(
+    game: '20 questions (Pip is guessing)',
+    onChange: _refresh,
+    opening: const Reaction(PipMood.excited, "Think of anything: an animal, an object, a famous person. Don't tell me! Tap Ready.", PipSoundCue.excited),
+  );
+  final TextEditingController _thing = TextEditingController();
   int _you = 0, _pip = 0, _confetti = 0;
   String? _scoreLine;
 
   @override
   void initState() {
     super.initState();
-    Arcade.sound(_reaction.sound);
+    Arcade.sound(_host.reaction.sound);
     GameScores.load(GameKind.twentyQuestions).then((s) => mounted ? setState(() => _scoreLine = s.line) : null);
   }
 
-  void _say(Reaction r) {
-    Arcade.sound(r.sound);
-    setState(() {
-      _reaction = r;
-      _reactionId++;
-    });
+  @override
+  void dispose() {
+    _thing.dispose();
+    super.dispose();
   }
+
+  void _refresh() {
+    if (mounted) setState(() {});
+  }
+
+  void _say(Reaction r, {String? situation}) {
+    Arcade.sound(r.sound);
+    _host.say(r, situation: situation);
+  }
+
+  /// The last few questions, so Pip's AI line can refer to them.
+  String get _recent => _game.asked.reversed.take(4).map((e) => '${e.$1} (${e.$2.name})').join('; ');
 
   Future<void> _ask() async {
     setState(() => _phase = _Phase.thinking);
-    _say(_banter.react(GameEvent.pipThinking));
+    _say(_host.banter.react(GameEvent.pipThinking));
     try {
       final provider = PipBrains.instance.providerFor(BrainJob.commands, getIt<LlmRegistryService>());
       final reply = await provider.chat([LlmMessage(role: 'user', content: _game.prompt())]).timeout(const Duration(seconds: 40));
@@ -72,22 +86,53 @@ class _TwentyQuestionsScreenState extends State<TwentyQuestionsScreen> {
     if (_phase != _Phase.asking || _game.currentQuestion == null) return;
     final wasGuess = _game.currentIsGuess;
     _game.answer(a);
-    if (wasGuess && a == Answer.yes) return _end(pipWon: true);
-    if (_game.outOfQuestions) return _end(pipWon: false);
+    if (wasGuess && a == Answer.yes) return _end();
+    if (_game.outOfQuestions) return _stumped();
     if (wasGuess) _say(const Reaction(PipMood.sad, 'Argh, not that! Let me keep going…', PipSoundCue.sad));
     await _ask();
   }
 
-  Future<void> _end({required bool pipWon}) async {
+  Future<void> _end() async {
     setState(() {
       _phase = _Phase.over;
-      pipWon ? _pip++ : _you++;
-      if (!pipWon) _confetti++;
+      _pip++;
     });
-    _say(pipWon
-        ? Reaction(PipMood.laughing, 'Got it in ${_game.asked.length}! My circuits are on fire today.', PipSoundCue.laugh)
-        : const Reaction(PipMood.sad, "I'm out of questions. You stumped me! What was it?", PipSoundCue.sad));
-    final s = await GameScores.record(GameKind.twentyQuestions, youWon: !pipWon);
+    _say(
+      Reaction(PipMood.laughing, 'Got it in ${_game.asked.length}! My circuits are on fire today.', PipSoundCue.laugh),
+      situation: 'Pip guessed it right with question ${_game.asked.length}. Its last questions: $_recent.',
+    );
+    await _record(youWon: false);
+  }
+
+  /// Out of questions: you win, and Pip asks what it was.
+  Future<void> _stumped() async {
+    setState(() {
+      _phase = _Phase.stumped;
+      _you++;
+      _confetti++;
+    });
+    _say(const Reaction(PipMood.sad, "I'm out of questions. You stumped me! What was it?", PipSoundCue.sad));
+    await _record(youWon: true);
+  }
+
+  Future<void> _reveal(String raw) async {
+    final thing = raw.trim();
+    if (_phase != _Phase.stumped) return;
+    setState(() => _phase = _Phase.over);
+    if (thing.isEmpty) {
+      _say(const Reaction(PipMood.unsure, "A mystery, then. I'll get you next time!", PipSoundCue.unsure));
+      return;
+    }
+    _thing.clear();
+    await GameScores.setLastStumped(thing);
+    _say(
+      Reaction(PipMood.sad, '$thing?! I never would have got that. Next time!', PipSoundCue.sad),
+      situation: 'Pip used all 20 questions and lost. The answer was "$thing". Its last questions were: $_recent.',
+    );
+  }
+
+  Future<void> _record({required bool youWon}) async {
+    final s = await GameScores.record(GameKind.twentyQuestions, youWon: youWon);
     if (mounted) setState(() => _scoreLine = s.line);
   }
 
@@ -100,6 +145,10 @@ class _TwentyQuestionsScreenState extends State<TwentyQuestionsScreen> {
   }
 
   void _heard(String text) {
+    if (_phase == _Phase.stumped) {
+      _reveal(text);
+      return;
+    }
     final a = TwentyQuestions.parse(text);
     if (a != null) _answer(a);
   }
@@ -109,14 +158,16 @@ class _TwentyQuestionsScreenState extends State<TwentyQuestionsScreen> {
     return GameTable(
       title: '20 questions',
       accent: Arcade.teal,
-      reaction: _reaction,
-      reactionId: _reactionId,
+      reaction: _host.reaction,
+      reactionId: _host.id,
       youScore: _you,
       pipScore: _pip,
       scoreLabel: _scoreLine,
       confetti: _confetti,
       onLeave: () => context.pop(),
-      board: _QuestionLights(used: _game.asked.length, current: _phase == _Phase.asking || _phase == _Phase.thinking),
+      board: _phase == _Phase.stumped
+          ? _RevealBox(controller: _thing, onSubmit: _reveal)
+          : _QuestionLights(used: _game.asked.length, current: _phase == _Phase.asking || _phase == _Phase.thinking),
       controls: switch (_phase) {
         _Phase.intro => [ArcadeButton(label: 'Ready', icon: Icons.play_arrow_rounded, color: Arcade.teal, onPressed: _ask)],
         _Phase.thinking => const [],
@@ -126,10 +177,54 @@ class _TwentyQuestionsScreenState extends State<TwentyQuestionsScreen> {
             ArcadeButton(label: 'Maybe', color: Arcade.violet, onPressed: () => _answer(Answer.maybe)),
             GameMicButton(onHeard: _heard),
           ],
+        _Phase.stumped => [
+            ArcadeButton(label: 'Tell Pip', icon: Icons.send_rounded, color: Arcade.teal, onPressed: () => _reveal(_thing.text)),
+            GameMicButton(onHeard: _heard),
+            ArcadeButton(label: 'Keep it secret', color: Arcade.panel, onPressed: () => _reveal('')),
+          ],
         _Phase.over => [ArcadeButton(label: 'Play again', icon: Icons.replay_rounded, color: Arcade.teal, onPressed: _restart)],
       },
     );
   }
+}
+
+/// "What was it?" after you stump Pip.
+class _RevealBox extends StatelessWidget {
+  final TextEditingController controller;
+  final ValueChanged<String> onSubmit;
+  const _RevealBox({required this.controller, required this.onSubmit});
+
+  @override
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text('YOU WIN!', style: Arcade.title(Arcade.amber, size: 30)),
+            const SizedBox(height: 6),
+            Text('What were you thinking of?', style: Arcade.title(Arcade.teal, size: 15).copyWith(shadows: const [])),
+            const SizedBox(height: 14),
+            NeonPanel(
+              color: Arcade.teal,
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 2),
+              child: TextField(
+                controller: controller,
+                autofocus: true,
+                textInputAction: TextInputAction.send,
+                textCapitalization: TextCapitalization.sentences,
+                onSubmitted: onSubmit,
+                style: const TextStyle(color: Arcade.text, fontSize: 18, fontWeight: FontWeight.w700),
+                cursorColor: Arcade.teal,
+                decoration: const InputDecoration(
+                  border: InputBorder.none,
+                  hintText: 'A toaster',
+                  hintStyle: TextStyle(color: Arcade.muted),
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
 }
 
 /// Twenty lights; used ones dim, the current one glows.

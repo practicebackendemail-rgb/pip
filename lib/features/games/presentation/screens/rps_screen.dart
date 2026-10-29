@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/services/pip_sfx_service.dart';
 import '../../data/game_scores.dart';
+import '../../data/pip_quips.dart';
 import '../../domain/game_kind.dart';
 import '../../domain/pip_banter.dart';
 import '../../domain/rock_paper_scissors.dart';
@@ -20,11 +21,9 @@ class RpsScreen extends StatefulWidget {
 }
 
 class _RpsScreenState extends State<RpsScreen> {
-  final _banter = PipBanter();
   RockPaperScissors _game = RockPaperScissors();
   GameDifficulty _level = GameDifficulty.fair;
-  late Reaction _reaction = _banter.react(GameEvent.start);
-  int _reactionId = 0;
+  late final PipGameHost _host = PipGameHost(game: 'Rock paper scissors', onChange: _refresh, opening: PipBanter().react(GameEvent.start));
   String? _count;
   Hand? _yours, _pips;
   RoundResult? _result;
@@ -37,19 +36,16 @@ class _RpsScreenState extends State<RpsScreen> {
   @override
   void initState() {
     super.initState();
-    Arcade.sound(_reaction.sound);
+    Arcade.sound(_host.reaction.sound);
     GameScores.difficulty().then((d) => _level = d);
     GameScores.load(GameKind.rockPaperScissors).then((s) => mounted ? setState(() => _scoreLine = s.line) : null);
   }
 
-  void _react(GameEvent e) {
-    final r = _banter.react(e);
-    Arcade.sound(r.sound);
-    setState(() {
-      _reaction = r;
-      _reactionId++;
-    });
+  void _refresh() {
+    if (mounted) setState(() {});
   }
+
+  void _react(GameEvent e, {String? situation}) => Arcade.sound(_host.react(e, situation: situation).sound);
 
   Future<void> _throw(Hand hand) async {
     if (_busy || _game.over) return;
@@ -78,15 +74,21 @@ class _RpsScreenState extends State<RpsScreen> {
     if (_game.over) {
       final youWon = _game.you > _game.pip;
       if (youWon) setState(() => _confetti++);
-      _react(youWon ? GameEvent.youWin : GameEvent.pipWins);
+      _react(youWon ? GameEvent.youWin : GameEvent.pipWins,
+          situation: '${youWon ? 'The user' : 'Pip'} just won the best of five, ${_game.you}-${_game.pip} to the user. '
+              'Last round: user ${hand.name}, Pip ${pips.name}.');
       final s = await GameScores.record(GameKind.rockPaperScissors, youWon: youWon);
       if (mounted) setState(() => _scoreLine = s.line);
     } else {
-      _react(switch (result) {
-        RoundResult.youWin => GameEvent.roundYouWin,
-        RoundResult.pipWins => GameEvent.roundPipWins,
-        RoundResult.tie => GameEvent.roundTie,
-      });
+      _react(
+        switch (result) {
+          RoundResult.youWin => GameEvent.roundYouWin,
+          RoundResult.pipWins => GameEvent.roundPipWins,
+          RoundResult.tie => GameEvent.roundTie,
+        },
+        situation: 'The user threw ${hand.name}, Pip threw ${pips.name}. '
+            'Score now: user ${_game.you}, Pip ${_game.pip} (first to 3).',
+      );
     }
   }
 
@@ -109,8 +111,8 @@ class _RpsScreenState extends State<RpsScreen> {
     return GameTable(
       title: 'Rock paper scissors',
       accent: Arcade.pink,
-      reaction: _reaction,
-      reactionId: _reactionId,
+      reaction: _host.reaction,
+      reactionId: _host.id,
       youScore: _game.you,
       pipScore: _game.pip,
       scoreLabel: _scoreLine == null ? 'First to 3' : 'First to 3 · $_scoreLine',

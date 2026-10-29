@@ -41,6 +41,20 @@ class GameScores {
     return load(k);
   }
 
+  static const _smartKey = 'game_smart_banter';
+  static const _stumpedKey = 'game_last_stumped';
+
+  /// Whether Pip may ask the AI model for fresh lines during games.
+  static Future<bool> smartBanter() async => (await SharedPreferences.getInstance()).getBool(_smartKey) ?? true;
+
+  static Future<void> setSmartBanter(bool on) async => (await SharedPreferences.getInstance()).setBool(_smartKey, on);
+
+  /// The last thing that stumped Pip in 20 questions.
+  static Future<String?> lastStumped() async => (await SharedPreferences.getInstance()).getString(_stumpedKey);
+
+  static Future<void> setLastStumped(String thing) async =>
+      (await SharedPreferences.getInstance()).setString(_stumpedKey, thing);
+
   static const _difficultyKey = 'game_difficulty';
 
   static Future<GameDifficulty> difficulty() async {
