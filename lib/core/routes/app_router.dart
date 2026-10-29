@@ -61,7 +61,7 @@ GoRouter buildAppRouter(OnboardingGate gate, {GlobalKey<NavigatorState>? navigat
         ],
       ),
       full(AppRoutes.memory, (_, _) => const WhatPipKnowsScreen()),
-      _arcade(AppRoutes.games, ArcadeEntrance.cabinet, root, (_, _) => const GameHubScreen()),
+      _arcade(AppRoutes.games, ArcadeEntrance.coin, root, (_, _) => const GameHubScreen()),
       _arcade('${AppRoutes.games}/:kind', ArcadeEntrance.ready, root, (_, state) => switch (GameKind.fromSlug(state.pathParameters['kind'])) {
             GameKind.fourInRow => const FourInRowScreen(),
             GameKind.rockPaperScissors => const RpsScreen(),
